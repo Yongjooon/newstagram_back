@@ -78,7 +78,7 @@ Newstagram은 사용자의 활동 로그를 분석하여 RSS 뉴스 피드를 �
 ## 5. 화면 설계
 
 ### 5-1. 로그인 화면
-![로그인 화면](docs/images/login.png)
+![로그인 화면](docs/images/Login.png)
 
 **주요 기능**
 - 아이디/비밀번호 입력을 통한 일반 로그인
@@ -95,7 +95,7 @@ Newstagram은 사용자의 활동 로그를 분석하여 RSS 뉴스 피드를 �
 ---
 
 ### 5-2. 회원가입 화면
-![회원가입 화면](docs/images/signup.png)
+![회원가입 화면](docs/images/SignUp.png)
 
 **주요 기능**
 - 사용자명(username) 입력 및 중복 확인
@@ -112,7 +112,7 @@ Newstagram은 사용자의 활동 로그를 분석하여 RSS 뉴스 피드를 �
 ---
 
 ### 5-3. 메인 화면 (뉴스 피드)
-![메인 화면](docs/images/main.png)
+![메인 화면](docs/images/Main.png)
 
 **주요 영역**
 
