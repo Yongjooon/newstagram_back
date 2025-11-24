@@ -1,0 +1,62 @@
+# .github/workflows/mirror-to-gitlab.yml
+name: Mirror to GitLab
+
+on:
+  push:
+    branches:
+      - master  # master 브랜치에 푸시될 때 실행
+
+jobs:
+  mirror-to-gitlab:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 모든 Git 히스토리를 가져옵니다
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+
+      - name: Push to GitLab Repository 1
+        env:
+          GITLAB_URL_1: ${{ secrets.GITLAB_URL_1 }}
+          GITLAB_ACCESS_TOKEN_1: ${{ secrets.GITLAB_ACCESS_TOKEN_1 }}
+        run: |
+          echo "🚀 Pushing to GitLab Repository 1..."
+          
+          # GitLab URL에 OAuth2 토큰을 포함하여 인증
+          GITLAB_REPO_URL=$(echo "$GITLAB_URL_1" | sed "s|://|://oauth2:$GITLAB_ACCESS_TOKEN_1@|")
+          
+          # master 브랜치로 푸시 (GitLab의 기본 브랜치)
+          git push --force "$GITLAB_REPO_URL" master:master
+          git push --force --tags "$GITLAB_REPO_URL"
+          
+          echo "✅ Successfully pushed to GitLab Repository 1."
+
+      - name: Push to GitLab Repository 2
+        env:
+          GITLAB_URL_2: ${{ secrets.GITLAB_URL_2 }}
+          GITLAB_ACCESS_TOKEN_2: ${{ secrets.GITLAB_ACCESS_TOKEN_2 }}
+        run: |
+          echo "🚀 Pushing to GitLab Repository 2..."
+          
+          # GitLab URL에 OAuth2 토큰을 포함하여 인증
+          GITLAB_REPO_URL=$(echo "$GITLAB_URL_2" | sed "s|://|://oauth2:$GITLAB_ACCESS_TOKEN_2@|")
+          
+          # master 브랜치로 푸시 (GitLab의 기본 브랜치)
+          git push --force "$GITLAB_REPO_URL" master:master
+          git push --force --tags "$GITLAB_REPO_URL"
+          
+          echo "✅ Successfully pushed to GitLab Repository 2."
+
+      - name: Summary
+        run: |
+          echo "📋 Mirror Summary"
+          echo "================="
+          echo "✅ GitHub main → GitLab 1 master"
+          echo "✅ GitHub main → GitLab 2 master"
+          echo "🎉 All repositories synchronized!"
