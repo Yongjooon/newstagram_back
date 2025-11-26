@@ -29,6 +29,9 @@ dependencies {
     
     // Test
     testImplementation 'org.springframework.security:spring-security-test'
+
+    // Lombok
+    implementation 'org.projectlombok:lombok:1.18.42'
 }
 
 bootJar {
