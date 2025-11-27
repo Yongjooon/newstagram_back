@@ -2,6 +2,9 @@
 description = 'Newstagram RSS Collector'
 
 dependencies {
+    // Domain Module
+    implementation project(':newstagram-domain')
+
     // Spring Batch for Scheduled Collection
     implementation 'org.springframework.boot:spring-boot-starter-batch'
     testImplementation 'org.springframework.batch:spring-batch-test'
