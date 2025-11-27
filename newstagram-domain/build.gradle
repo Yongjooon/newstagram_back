@@ -1,0 +1,19 @@
+description = 'Newstagram Domain Module'
+apply plugin: 'java-library'
+
+bootJar { enabled = false }
+jar { enabled = true }
+
+dependencies {
+    // JPA & Database
+    api 'org.springframework.boot:spring-boot-starter-data-jpa'
+    runtimeOnly 'org.postgresql:postgresql'
+    
+    // PGVector
+    api 'com.pgvector:pgvector:0.1.6'
+    
+    // Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}
+
