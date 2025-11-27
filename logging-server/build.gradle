@@ -2,6 +2,9 @@
 description = 'Newstagram Logging Server'
 
 dependencies {
+    // Domain Module
+    implementation project(':newstagram-domain')
+
     // JPA & Database
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     runtimeOnly 'org.postgresql:postgresql'
