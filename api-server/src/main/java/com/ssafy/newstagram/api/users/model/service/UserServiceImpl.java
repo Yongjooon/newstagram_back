@@ -1,6 +1,7 @@
 package com.ssafy.newstagram.api.users.model.service;
 
 
+import com.ssafy.newstagram.api.users.model.dto.RegisterRequestDto;
 import com.ssafy.newstagram.api.users.repository.UserRepository;
 import com.ssafy.newstagram.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +16,7 @@ public class UserServiceImpl implements  UserService{
     private final PasswordEncoder passwordEncoder;
 
     @Override
-    public void register(User dto) {
+    public void register(RegisterRequestDto dto) {
 
         // 이메일 중복 체크
         if(userRepository.existsByEmail(dto.getEmail())){
@@ -23,7 +24,7 @@ public class UserServiceImpl implements  UserService{
         }
 
         // 비밀번호 암호화
-        String encodedPassword = passwordEncoder.encode(dto.getPasswordHash());
+        String encodedPassword = passwordEncoder.encode(dto.getPassword());
 
         // User 객체 생성
         User user = User.builder()
