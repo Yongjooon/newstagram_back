@@ -1,0 +1,38 @@
+package com.ssafy.newstagram.api.users.model.service;
+
+
+import com.ssafy.newstagram.api.users.model.dto.RegisterRequestDto;
+import com.ssafy.newstagram.api.users.repository.UserRepository;
+import com.ssafy.newstagram.domain.user.entity.User;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class UserServiceImpl implements  UserService{
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    @Override
+    public void register(RegisterRequestDto dto) {
+
+        // 이메일 중복 체크
+        if(userRepository.existsByEmail(dto.getEmail())){
+            throw new IllegalArgumentException("이미 존재하는 이메일입니다.");
+        }
+
+        // 비밀번호 암호화
+        String encodedPassword = passwordEncoder.encode(dto.getPassword());
+
+        // User 객체 생성
+        User user = User.builder()
+                .email(dto.getEmail())
+                .passwordHash(encodedPassword)
+                .nickname(dto.getNickname())
+                .build();
+
+        userRepository.save(user);
+    }
+}

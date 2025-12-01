@@ -232,3 +232,5 @@ Newstagram은 사용자의 활동 로그를 분석하여 RSS 뉴스 피드를 �
 # API  
 ## Swagger 사용
 ![스웨거 화면](docs/images/Swagger.png)
+
+![API 명세서](docs/images/API.png)
