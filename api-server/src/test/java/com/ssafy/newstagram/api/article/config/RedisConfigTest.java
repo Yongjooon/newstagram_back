@@ -45,7 +45,7 @@ public class RedisConfigTest {
         assertEquals(articleDto.getAuthor(), result.getAuthor());
         assertEquals(articleDto.getTitle(), result.getTitle());
     }
-
+ㅎ
     @Test
     void testListWithRedisTemplate() {
         ListOperations<String, Object> listOps = redisTemplate.opsForList();
