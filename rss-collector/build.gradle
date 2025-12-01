@@ -5,6 +5,12 @@ dependencies {
     // Domain Module
     implementation project(':newstagram-domain')
 
+    // MyBatis 추가
+    implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
+
+    // Swagger / openAPI 추가
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
+
     // Spring Batch for Scheduled Collection
     implementation 'org.springframework.boot:spring-boot-starter-batch'
     testImplementation 'org.springframework.batch:spring-batch-test'

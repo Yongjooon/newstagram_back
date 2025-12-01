@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ssafy.newstagram.rss.mapper.ArticleMapper">
+
+    <insert id="insertIgnoreOnConflict" parameterType="com.ssafy.newstagram.rss.vo.Article">
+        INSERT INTO articles
+        (title, content, description, url, thumbnail_url,
+         author, published_at, feed_id, category_id, sources_id)
+        VALUES
+            (#{title}, #{content}, #{description}, #{url}, #{thumbnailUrl},
+             #{author}, #{publishedAt}, #{feedId}, #{categoryId}, #{sourcesId})
+            ON CONFLICT (url) DO NOTHING
+    </insert>
+
+</mapper>

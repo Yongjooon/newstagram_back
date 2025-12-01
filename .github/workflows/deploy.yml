@@ -1,0 +1,219 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches:
+      - develop
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: ap-northeast-2 # AWS 리전 (서울)
+  ECR_REPOSITORY_RSS: newstagram-rss # ECR 리포지토리 이름 (RSS)
+  ECR_REPOSITORY_API: newstagram-api # ECR 리포지토리 이름 (API)
+  ECR_REPOSITORY_LOG: newstagram-log # ECR 리포지토리 이름 (Logging)
+
+jobs:
+  # 1. CI: 빌드 및 테스트 (공통)
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build with Gradle
+        run: ./gradlew build -x test # 테스트는 생략하거나 필요시 포함
+
+  # 2. CD: RSS Collector 배포
+  deploy-rss-collector:
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and Push Docker Image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # RSS Collector 빌드 (bootJar)
+          chmod +x gradlew
+          ./gradlew :rss-collector:bootJar -x test
+
+          # Docker Image 빌드 및 푸시
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_RSS:latest -f rss-collector/Dockerfile .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_RSS:latest
+
+      - name: Deploy to EC2 (RSS Collector)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST_RSS }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # AWS ECR 로그인
+            aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
+
+            # 기존 컨테이너 중지 및 삭제
+            docker stop rss-collector || true
+            docker rm rss-collector || true
+
+            # 이미지 Pull
+            docker pull ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_RSS }}:latest
+
+            # 컨테이너 실행 (Prod 프로필 및 환경변수 주입)
+            docker run -d --name rss-collector \
+              -p 8082:8082 \
+              -e SPRING_PROFILES_ACTIVE=prod \
+              -e RDS_ENDPOINT="${{ secrets.RDS_ENDPOINT }}" \
+              -e RDS_USERNAME="${{ secrets.RDS_USERNAME }}" \
+              -e RDS_PASSWORD="${{ secrets.RDS_PASSWORD }}" \
+              -e REDIS_HOST="${{ secrets.REDIS_HOST }}" \
+              -e REDIS_PORT="${{ secrets.REDIS_PORT }}" \
+              -e KAFKA_BOOTSTRAP_SERVERS="${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}" \
+              -e KAFKA_API_KEY="${{ secrets.KAFKA_API_KEY }}" \
+              -e KAFKA_API_SECRET="${{ secrets.KAFKA_API_SECRET }}" \
+              ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_RSS }}:latest
+
+  # # 3. CD: API Server 배포
+  # deploy-api-server:
+  #   needs: ci
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+
+  #     - name: Set up JDK 17
+  #       uses: actions/setup-java@v4
+  #       with:
+  #         java-version: "17"
+  #         distribution: "temurin"
+
+  #     - name: Configure AWS credentials
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #         aws-region: ${{ env.AWS_REGION }}
+
+  #     - name: Login to Amazon ECR
+  #       id: login-ecr
+  #       uses: aws-actions/amazon-ecr-login@v2
+
+  #     - name: Build and Push Docker Image
+  #       env:
+  #         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+  #         IMAGE_TAG: ${{ github.sha }}
+  #       run: |
+  #         chmod +x gradlew
+  #         ./gradlew :api-server:bootJar -x test
+  #         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_API:latest -f api-server/Dockerfile .
+  #         docker push $ECR_REGISTRY/$ECR_REPOSITORY_API:latest
+
+  #     - name: Deploy to EC2 (API Server)
+  #       uses: appleboy/ssh-action@v1.0.3
+  #       with:
+  #         host: ${{ secrets.EC2_HOST_API }}
+  #         username: ec2-user
+  #         key: ${{ secrets.EC2_SSH_KEY }}
+  #         script: |
+  #           aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
+  #           docker stop api-server || true
+  #           docker rm api-server || true
+  #           docker pull ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_API }}:latest
+  #           docker run -d --name api-server \
+  #             -p 8080:8080 \
+  #             -e SPRING_PROFILES_ACTIVE=prod \
+  #             -e RDS_ENDPOINT="${{ secrets.RDS_ENDPOINT }}" \
+  #             -e RDS_USERNAME="${{ secrets.RDS_USERNAME }}" \
+  #             -e RDS_PASSWORD="${{ secrets.RDS_PASSWORD }}" \
+  #             -e REDIS_HOST="${{ secrets.REDIS_HOST }}" \
+  #             -e REDIS_PORT="${{ secrets.REDIS_PORT }}" \
+  #             -e KAFKA_BOOTSTRAP_SERVERS="${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}" \
+  #             -e KAFKA_API_KEY="${{ secrets.KAFKA_API_KEY }}" \
+  #             -e KAFKA_API_SECRET="${{ secrets.KAFKA_API_SECRET }}" \
+  #             -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+  #             ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_API }}:latest
+
+  # # 4. CD: Logging Server 배포
+  # deploy-logging-server:
+  #   needs: ci
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+
+  #     - name: Set up JDK 17
+  #       uses: actions/setup-java@v4
+  #       with:
+  #         java-version: "17"
+  #         distribution: "temurin"
+
+  #     - name: Configure AWS credentials
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #         aws-region: ${{ env.AWS_REGION }}
+
+  #     - name: Login to Amazon ECR
+  #       id: login-ecr
+  #       uses: aws-actions/amazon-ecr-login@v2
+
+  #     - name: Build and Push Docker Image
+  #       env:
+  #         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+  #         IMAGE_TAG: ${{ github.sha }}
+  #       run: |
+  #         chmod +x gradlew
+  #         ./gradlew :logging-server:bootJar -x test
+  #         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_LOG:latest -f logging-server/Dockerfile .
+  #         docker push $ECR_REGISTRY/$ECR_REPOSITORY_LOG:latest
+
+  #     - name: Deploy to EC2 (Logging Server)
+  #       uses: appleboy/ssh-action@v1.0.3
+  #       with:
+  #         host: ${{ secrets.EC2_HOST_LOG }}
+  #         username: ec2-user
+  #         key: ${{ secrets.EC2_SSH_KEY }}
+  #         script: |
+  #           aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
+  #           docker stop logging-server || true
+  #           docker rm logging-server || true
+  #           docker pull ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_LOG }}:latest
+  #           docker run -d --name logging-server \
+  #             -p 8081:8081 \
+  #             -e SPRING_PROFILES_ACTIVE=prod \
+  #             -e RDS_ENDPOINT="${{ secrets.RDS_ENDPOINT }}" \
+  #             -e RDS_USERNAME="${{ secrets.RDS_USERNAME }}" \
+  #             -e RDS_PASSWORD="${{ secrets.RDS_PASSWORD }}" \
+  #             -e REDIS_HOST="${{ secrets.REDIS_HOST }}" \
+  #             -e REDIS_PORT="${{ secrets.REDIS_PORT }}" \
+  #             -e KAFKA_BOOTSTRAP_SERVERS="${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}" \
+  #             -e KAFKA_API_KEY="${{ secrets.KAFKA_API_KEY }}" \
+  #             -e KAFKA_API_SECRET="${{ secrets.KAFKA_API_SECRET }}" \
+  #             ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_LOG }}:latest

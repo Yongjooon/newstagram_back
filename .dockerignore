@@ -1,0 +1,10 @@
+.git
+.gradle
+build
+*/build
+*/bin
+.idea
+.vscode
+*.class
+*.jar
+.env

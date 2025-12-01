@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -18,7 +16,11 @@ services:
     networks:
       - newstagram-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-newstagram} -d ${POSTGRES_DB:-newstagram}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-newstagram} -d ${POSTGRES_DB:-newstagram}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -68,7 +70,11 @@ services:
     networks:
       - newstagram-network
     healthcheck:
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5

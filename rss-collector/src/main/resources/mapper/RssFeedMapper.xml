@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ssafy.newstagram.rss.mapper.RssFeedMapper">
+
+    <resultMap id="RssFeedResultMap" type="com.ssafy.newstagram.rss.vo.RssFeed">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="rssUrl" column="rss_url"/>
+        <result property="isActive" column="is_active"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="lastFetchedAt" column="last_fetched_at"/>
+        <result property="categoryId" column="category_id"/>
+        <result property="sourceId" column="source_id"/>
+    </resultMap>
+
+    <select id="findAllActiveFeeds" resultMap="RssFeedResultMap">
+        SELECT *
+        FROM rss_feeds
+        WHERE is_active = TRUE
+    </select>
+
+    <select id="findActiveFeedsBySourceId" resultMap="RssFeedResultMap">
+        SELECT *
+        FROM rss_feeds
+        WHERE is_active = TRUE
+          AND source_id = #{sourceId}
+    </select>
+
+    <select id="findActiveFeedsBySourceIdAndCategoryId" resultMap="RssFeedResultMap">
+        SELECT *
+        FROM rss_feeds
+        WHERE is_active = TRUE
+          AND source_id = #{sourceId}
+          AND category_id = #{categoryId}
+    </select>
+
+</mapper>
