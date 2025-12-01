@@ -10,9 +10,9 @@ permissions:
 
 env:
   AWS_REGION: ap-northeast-2 # AWS 리전 (서울)
-  ECR_REPOSITORY_RSS: newstagram-rss # ECR 리포지토리 이름 (RSS)
-  ECR_REPOSITORY_API: newstagram-api # ECR 리포지토리 이름 (API)
-  ECR_REPOSITORY_LOG: newstagram-log # ECR 리포지토리 이름 (Logging)
+  ECR_REPOSITORY_RSS: newstagram/rss-collector # ECR 리포지토리 이름 (RSS)
+  ECR_REPOSITORY_API: newstagram/api-server # ECR 리포지토리 이름 (API)
+  ECR_REPOSITORY_LOG: newstagram/logging-server # ECR 리포지토리 이름 (Logging)
 
 jobs:
   # 1. CI: 빌드 및 테스트 (공통)
