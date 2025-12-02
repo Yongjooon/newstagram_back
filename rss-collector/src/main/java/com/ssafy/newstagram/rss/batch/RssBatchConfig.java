@@ -41,9 +41,7 @@ public class RssBatchConfig {
                 .<Long, Long>chunk(1, transactionManager)
                 .reader(newsSourceItemReader)
                 .writer(newsSourceItemWriter)
-
                 .taskExecutor(rssTaskExecutor) //멀티스레드 스탭
-                .throttleLimit(4)
                 .build();
     }
 
