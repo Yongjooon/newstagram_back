@@ -103,7 +103,7 @@ public class RssArticleServiceImpl implements RssArticleService {
     private SyndFeed readFeed(String rssUrl) throws Exception {
         URL url = new URL(rssUrl);
         SyndFeedInput input = new SyndFeedInput();
-        try (XmlReader reader = new XmlReader(url)) {
+        try (XmlReader reader = new XmlReader(url.openStream())) {
             return input.build(reader);
         }
     }
