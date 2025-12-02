@@ -1,6 +1,9 @@
 package com.ssafy.newstagram.api.users.model.service;
 
 
+import com.ssafy.newstagram.api.auth.JwtTokenProvider;
+import com.ssafy.newstagram.api.auth.model.dto.LoginRequestDto;
+import com.ssafy.newstagram.api.auth.model.dto.LoginResponseDto;
 import com.ssafy.newstagram.api.users.model.dto.RegisterRequestDto;
 import com.ssafy.newstagram.api.users.repository.UserRepository;
 import com.ssafy.newstagram.domain.user.entity.User;
@@ -14,6 +17,7 @@ public class UserServiceImpl implements  UserService{
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @Override
     public void register(RegisterRequestDto dto) {
@@ -34,5 +38,10 @@ public class UserServiceImpl implements  UserService{
                 .build();
 
         userRepository.save(user);
+    }
+
+    @Override
+    public LoginResponseDto login(LoginRequestDto dto) {
+        return null;
     }
 }
