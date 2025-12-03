@@ -1,5 +1,6 @@
 package com.ssafy.newstagram.api.config;
 
+import com.ssafy.newstagram.api.auth.jwt.JWTUtil;
 import com.ssafy.newstagram.api.auth.jwt.LoginFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -18,6 +19,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final AuthenticationConfiguration authenticationConfiguration;
+    private final JWTUtil jwtUtil;
 
     @Bean
     public AuthenticationManager authenticationManager() throws Exception {
@@ -35,7 +37,7 @@ public class SecurityConfig {
         AuthenticationManager authManager = authenticationManager();
 
         // LoginFilter 생성 + URL 설정
-        LoginFilter loginFilter = new LoginFilter(authManager);
+        LoginFilter loginFilter = new LoginFilter(authManager, jwtUtil);
         loginFilter.setFilterProcessesUrl("/auth/login"); // 로그인 URL
 
         http
