@@ -1,5 +1,7 @@
 package com.ssafy.newstagram.api.users.controller;
 
+import com.ssafy.newstagram.api.auth.model.dto.LoginRequestDto;
+import com.ssafy.newstagram.api.auth.model.dto.LoginResponseDto;
 import com.ssafy.newstagram.api.users.model.dto.RegisterRequestDto;
 import com.ssafy.newstagram.api.users.model.service.UserService;
 import com.ssafy.newstagram.domain.user.entity.User;
@@ -21,7 +23,7 @@ public class UserController {
 
     private final UserService userService;
 
-    @PostMapping
+    @PostMapping("/email")
     @Operation(summary = "일반 회원가입", description = "이메일 기반으로 일반 회원가입을 요청한다.")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "회원가입 성공 - 사용자 생성됨"),

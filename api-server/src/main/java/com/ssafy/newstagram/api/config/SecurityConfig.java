@@ -1,16 +1,31 @@
 package com.ssafy.newstagram.api.config;
 
+import com.ssafy.newstagram.api.auth.jwt.JWTFilter;
+import com.ssafy.newstagram.api.auth.jwt.JWTUtil;
+import com.ssafy.newstagram.api.auth.jwt.LoginFilter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final AuthenticationConfiguration authenticationConfiguration;
+    private final JWTUtil jwtUtil;
+
+    @Bean
+    public AuthenticationManager authenticationManager() throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
+    }
 
     @Bean
     public BCryptPasswordEncoder bCrybpPasswordEncoder(){
@@ -19,6 +34,16 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+
+        AuthenticationManager authManager = authenticationManager();
+
+        // JWTFilter 생성
+        JWTFilter jwtFilter = new JWTFilter(jwtUtil);
+
+        // LoginFilter 생성 + URL 설정
+        LoginFilter loginFilter = new LoginFilter(authManager, jwtUtil);
+        loginFilter.setFilterProcessesUrl("/auth/login"); // 로그인 URL
+
         http
             .authorizeHttpRequests(auth -> auth
 //                .requestMatchers("/", "/signup", "/login").permitAll()
@@ -29,6 +54,9 @@ public class SecurityConfig {
             .headers(headers -> headers
                 .frameOptions(frame -> frame.sameOrigin())  // H2 Console 등을 위해
             );
+
+        http.addFilterBefore(jwtFilter, LoginFilter.class);
+        http.addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class);
         
         return http.build();
     }
