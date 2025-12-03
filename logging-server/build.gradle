@@ -19,7 +19,7 @@ dependencies {
     // implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
     
     // Async Processing
-    implementation 'org.springframework.boot:spring-boot-starter-amqp'
+    // implementation 'org.springframework.boot:spring-boot-starter-amqp'
 }
 
 bootJar {
