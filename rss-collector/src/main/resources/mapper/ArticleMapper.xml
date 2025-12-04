@@ -15,4 +15,33 @@
             ON CONFLICT (url) DO NOTHING
     </insert>
 
+    <select id="findArticlesWithoutEmbeddingBySource"
+            parameterType="long"
+            resultType="com.ssafy.newstagram.rss.vo.Article">
+        SELECT
+            id,
+            title,
+            content,
+            description,
+            url,
+            thumbnail_url AS thumbnailUrl,
+            author,
+            published_at AS publishedAt,
+            created_at AS createdAt,
+            updated_at AS updatedAt,
+            feed_id AS feedId,
+            category_id AS categoryId,
+            sources_id AS sourcesId
+        FROM articles
+        WHERE embedding IS NULL
+          AND sources_id = #{sourceId}
+        ORDER BY id ASC
+    </select>
+
+    <update id="updateEmbedding">
+        UPDATE articles
+        SET embedding = #{embedding,jdbcType=OTHER}::vector,
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
 </mapper>

@@ -95,7 +95,7 @@ public class NewsSourceItemWriter implements ItemWriter<Long> {
                 insertedCount = result.getInsertedCount();
 
                 //백터화 수행
-                articleVectorService.vectorizeForSource(feed.getId());
+               // articleVectorService.vectorizeForSource(feed.getId());
                 success = true;
             }catch(Exception e){
                 lastErrorMessage = e.getMessage();
