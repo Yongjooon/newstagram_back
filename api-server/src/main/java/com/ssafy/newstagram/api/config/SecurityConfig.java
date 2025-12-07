@@ -1,5 +1,6 @@
 package com.ssafy.newstagram.api.config;
 
+import com.ssafy.newstagram.api.auth.handler.CustomSuccessHandler;
 import com.ssafy.newstagram.api.auth.jwt.JWTFilter;
 import com.ssafy.newstagram.api.auth.jwt.JWTUtil;
 import com.ssafy.newstagram.api.auth.jwt.LoginFilter;
@@ -25,6 +26,7 @@ public class SecurityConfig {
     private final AuthenticationConfiguration authenticationConfiguration;
     private final JWTUtil jwtUtil;
     private final CustomOAuth2UserService customOAuth2UserService;
+    private final CustomSuccessHandler customSuccessHandler;
 
     @Bean
     public AuthenticationManager authenticationManager() throws Exception {
@@ -63,7 +65,7 @@ public class SecurityConfig {
         http.oauth2Login(oauth2 ->
                 oauth2.userInfoEndpoint(userInfoEndpointConfig ->
                         userInfoEndpointConfig.userService(customOAuth2UserService)
-                )
+                ).successHandler(customSuccessHandler)
         );
 
         // 세션 설정 : STATELESS
