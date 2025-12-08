@@ -64,12 +64,13 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
         String role = auth.getAuthority();
 
-        String token = jwtUtil.createAccessToken(email, role);
+        String accessToken = jwtUtil.createAccessToken(email, role);
+        String refreshToken = jwtUtil.createRefreshToken(email);
 
         BaseResponse<LoginResponseDto> res = BaseResponse.success(
                 "AUTH_200",
                 "로그인 성공",
-                new LoginResponseDto(token, null)
+                new LoginResponseDto(accessToken, refreshToken)
         );
 
         ObjectMapper objectMapper = new ObjectMapper();
