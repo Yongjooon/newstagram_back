@@ -8,10 +8,10 @@
     <insert id="insertIgnoreOnConflict" parameterType="com.ssafy.newstagram.rss.vo.Article">
         INSERT INTO articles
         (title, content, description, url, thumbnail_url,
-         author, published_at, feed_id, category_id, sources_id)
+         author, published_at, feed_id, category_id, sources_id, created_at, updated_at)
         VALUES
             (#{title}, #{content}, #{description}, #{url}, #{thumbnailUrl},
-             #{author}, #{publishedAt}, #{feedId}, #{categoryId}, #{sourcesId})
+             #{author}, #{publishedAt}, #{feedId}, #{categoryId}, #{sourcesId}, NOW(), NOW())
             ON CONFLICT (url) DO NOTHING
     </insert>
 

@@ -15,4 +15,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmailIncludeDeleted(@Param("email") String email);
 
     User findByEmail(String email);
+
+    User findByLoginTypeAndProviderId(String loginType, String providerId);
 }

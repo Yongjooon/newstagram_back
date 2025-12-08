@@ -4,6 +4,7 @@ package com.ssafy.newstagram.api.users.model.service;
 import com.ssafy.newstagram.api.auth.model.dto.LoginRequestDto;
 import com.ssafy.newstagram.api.auth.model.dto.LoginResponseDto;
 import com.ssafy.newstagram.api.users.model.dto.RegisterRequestDto;
+import com.ssafy.newstagram.api.users.model.dto.UserInfoDto;
 import com.ssafy.newstagram.api.users.repository.UserRepository;
 import com.ssafy.newstagram.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
@@ -52,5 +53,21 @@ public class UserServiceImpl implements  UserService{
         }
 
         userRepository.delete(user); // soft delete
+    }
+
+    @Override
+    public UserInfoDto getUserInfoByEmail(String email) {
+        User user = userRepository.findByEmail(email);
+
+        if(user == null){
+            throw new IllegalArgumentException("회원을 찾을 수 없습니다.");
+        }
+
+        return UserInfoDto.builder()
+            .email(user.getEmail())
+            .nickname(user.getNickname())
+            .role(user.getRole())
+            .preferenceEmbedding(user.getPreferenceEmbedding())
+            .build();
     }
 }

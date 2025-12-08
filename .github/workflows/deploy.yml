@@ -173,6 +173,9 @@ jobs:
               -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
               -e GMS_SECRET="${{ secrets.GMS_SECRET }}" \
               -e GMS_BASE_URL="${{ secrets.GMS_BASE_URL }}" \
+              -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
+              -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+              -e GOOGLE_REDIRECT_URI="${{ secrets.GOOGLE_REDIRECT_URI }}" \
               ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_API }}:latest
 
   # 4. CD: Logging Server 배포
