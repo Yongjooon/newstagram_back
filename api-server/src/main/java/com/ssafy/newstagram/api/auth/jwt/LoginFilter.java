@@ -3,6 +3,7 @@ package com.ssafy.newstagram.api.auth.jwt;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.newstagram.api.auth.model.dto.LoginRequestDto;
 import com.ssafy.newstagram.api.auth.model.dto.LoginResponseDto;
+import com.ssafy.newstagram.api.auth.model.service.RefreshTokenService;
 import com.ssafy.newstagram.api.common.BaseResponse;
 import com.ssafy.newstagram.api.common.ErrorDetail;
 import com.ssafy.newstagram.api.users.model.dto.CustomUserDetails;
@@ -25,10 +26,12 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
     private final AuthenticationManager authenticationManager;
     private final JWTUtil jwtUtil;
+    private final RefreshTokenService refreshTokenService;
 
-    public LoginFilter(AuthenticationManager authenticationManager, JWTUtil jwtUtil) {
+    public LoginFilter(AuthenticationManager authenticationManager, JWTUtil jwtUtil, RefreshTokenService refreshTokenService) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @Override
@@ -64,12 +67,15 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
         String role = auth.getAuthority();
 
-        String token = jwtUtil.createJwt(email, role);
+        String accessToken = jwtUtil.createAccessToken(email, role);
+        String refreshToken = jwtUtil.createRefreshToken(email);
+
+        refreshTokenService.saveRefreshToken(email, refreshToken);
 
         BaseResponse<LoginResponseDto> res = BaseResponse.success(
                 "AUTH_200",
                 "로그인 성공",
-                new LoginResponseDto(token, null)
+                new LoginResponseDto(accessToken, refreshToken)
         );
 
         ObjectMapper objectMapper = new ObjectMapper();

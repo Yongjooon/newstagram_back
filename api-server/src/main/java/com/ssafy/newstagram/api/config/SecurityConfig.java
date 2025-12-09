@@ -5,17 +5,16 @@ import com.ssafy.newstagram.api.auth.jwt.JWTFilter;
 import com.ssafy.newstagram.api.auth.jwt.JWTUtil;
 import com.ssafy.newstagram.api.auth.jwt.LoginFilter;
 import com.ssafy.newstagram.api.auth.model.service.CustomOAuth2UserService;
+import com.ssafy.newstagram.api.auth.model.service.RefreshTokenService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -32,15 +31,11 @@ public class SecurityConfig {
     private final JWTUtil jwtUtil;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final CustomSuccessHandler customSuccessHandler;
+    private final RefreshTokenService refreshTokenService;
 
     @Bean
     public AuthenticationManager authenticationManager() throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
-    }
-
-    @Bean
-    public BCryptPasswordEncoder bCrybpPasswordEncoder(){
-        return new BCryptPasswordEncoder();
     }
 
     @Bean
@@ -52,7 +47,7 @@ public class SecurityConfig {
         JWTFilter jwtFilter = new JWTFilter(jwtUtil);
 
         // LoginFilter 생성 + URL 설정
-        LoginFilter loginFilter = new LoginFilter(authManager, jwtUtil);
+        LoginFilter loginFilter = new LoginFilter(authManager, jwtUtil, refreshTokenService);
         loginFilter.setFilterProcessesUrl("/auth/login"); // 로그인 URL
 
         // CORS 설정

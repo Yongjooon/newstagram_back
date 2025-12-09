@@ -4,9 +4,12 @@ package com.ssafy.newstagram.api.users.model.service;
 import com.ssafy.newstagram.api.auth.model.dto.LoginRequestDto;
 import com.ssafy.newstagram.api.auth.model.dto.LoginResponseDto;
 import com.ssafy.newstagram.api.users.model.dto.RegisterRequestDto;
+import com.ssafy.newstagram.api.users.model.dto.UpdateNicknameRequestDto;
+import com.ssafy.newstagram.api.users.model.dto.UpdatePasswordRequestDto;
 import com.ssafy.newstagram.api.users.model.dto.UserInfoDto;
 import com.ssafy.newstagram.api.users.repository.UserRepository;
 import com.ssafy.newstagram.domain.user.entity.User;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -40,11 +43,6 @@ public class UserServiceImpl implements  UserService{
     }
 
     @Override
-    public LoginResponseDto login(LoginRequestDto dto) {
-        return null;
-    }
-
-    @Override
     public void deleteUserByEmail(String email) {
         User user = userRepository.findByEmail(email);
 
@@ -70,4 +68,45 @@ public class UserServiceImpl implements  UserService{
             .preferenceEmbedding(user.getPreferenceEmbedding())
             .build();
     }
+
+    @Override
+    public void updateNickname(String email, UpdateNicknameRequestDto dto) {
+        User user = userRepository.findByEmail(email);
+
+        if(user == null){
+            throw new IllegalArgumentException("회원을 찾을 수 없습니다.");
+        }
+
+        user.updateNickname(dto.getNewNickname());
+        userRepository.save(user);
+    }
+
+    @Override
+    public User getUserByEmail(String email) {
+        User user = userRepository.findByEmail(email);
+
+        if(user == null){
+            throw new IllegalArgumentException("회원을 찾을 수 없습니다.");
+        }
+
+        return user;
+    }
+
+    @Transactional
+    @Override
+    public void updatePassword(String email, UpdatePasswordRequestDto dto) {
+        User user = userRepository.findByEmail(email);
+        if(user == null){
+            throw new IllegalArgumentException("회원을 찾을 수 없습니다.");
+        }
+
+        if(!passwordEncoder.matches(dto.getCurrentPassword(), user.getPasswordHash())){
+            throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
+        }
+
+        String newEncoded = passwordEncoder.encode(dto.getNewPassword());
+
+        user.updatePasswordHash(newEncoded);
+    }
+
 }

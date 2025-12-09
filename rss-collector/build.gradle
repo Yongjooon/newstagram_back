@@ -37,6 +37,11 @@ dependencies {
     
     // Jsoup for HTML Parsing
     implementation 'org.jsoup:jsoup:1.17.2'
+
+    //Rome-modules(썸네일 추출)
+    implementation 'com.rometools:rome:1.16.0'
+    implementation 'com.rometools:rome-modules:1.16.0'
+
 }
 
 bootJar {
