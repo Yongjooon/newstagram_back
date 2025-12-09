@@ -2,9 +2,11 @@ package com.ssafy.newstagram.api.exception;
 
 import com.ssafy.newstagram.api.common.BaseResponse;
 import com.ssafy.newstagram.api.common.ErrorDetail;
+import io.jsonwebtoken.JwtException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -45,7 +47,37 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .badRequest()
-                .body(BaseResponse.error("USER_400", "회원가입 실패", errorDetail));
+                .body(BaseResponse.error("USER_400", "유효성 검사 실패", errorDetail));
+    }
+
+    @ExceptionHandler(JwtException.class)
+    public ResponseEntity<BaseResponse<?>> handleJwtException(JwtException e){
+
+        log.error("JWT error: {}", e.getMessage());
+
+        ErrorDetail errorDetail = ErrorDetail.builder()
+                .type("TOKEN_ERROR")
+                .message("Invalid or expired token")
+                .build();
+
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(BaseResponse.error("AUTH_401", "토큰 에러", errorDetail));
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<BaseResponse<?>> handleBadCredentialsException(BadCredentialsException e){
+
+        log.error("Bad credentials error: {}", e.getMessage());
+
+        ErrorDetail errorDetail = ErrorDetail.builder()
+                .type("AUTHENTICATION_FAILED")
+                .message("Invalid email or password")
+                .build();
+
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(BaseResponse.error("AUTH_401", "이메일 또는 비밀번호가 올바르지 않습니다.", errorDetail));
     }
 
     // 모든 예외를 잡는 가장 상위 핸들러

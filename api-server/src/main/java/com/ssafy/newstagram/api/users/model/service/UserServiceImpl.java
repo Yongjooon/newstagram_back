@@ -41,11 +41,6 @@ public class UserServiceImpl implements  UserService{
     }
 
     @Override
-    public LoginResponseDto login(LoginRequestDto dto) {
-        return null;
-    }
-
-    @Override
     public void deleteUserByEmail(String email) {
         User user = userRepository.findByEmail(email);
 
@@ -82,5 +77,24 @@ public class UserServiceImpl implements  UserService{
 
         user.updateNickname(dto.getNewNickname());
         userRepository.save(user);
+    }
+
+    @Override
+    public User getUserByEmail(String email) {
+        User user = userRepository.findByEmail(email);
+
+        if(user == null){
+            throw new IllegalArgumentException("회원을 찾을 수 없습니다.");
+        }
+
+        return user;
+    }
+
+    @Override
+    public void updateRefreshToken(String email, String newRefreshToken) {
+        int updated = userRepository.updateRefreshTokenByEmail(email, newRefreshToken);
+        if(updated == 0){
+            throw new IllegalArgumentException("존재하지 않거나 삭제된 계정입니다.");
+        }
     }
 }
