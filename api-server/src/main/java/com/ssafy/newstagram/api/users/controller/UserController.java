@@ -3,6 +3,7 @@ package com.ssafy.newstagram.api.users.controller;
 import com.ssafy.newstagram.api.common.BaseResponse;
 import com.ssafy.newstagram.api.users.model.dto.CustomUserDetails;
 import com.ssafy.newstagram.api.users.model.dto.RegisterRequestDto;
+import com.ssafy.newstagram.api.users.model.dto.UpdateNicknameRequestDto;
 import com.ssafy.newstagram.api.users.model.dto.UserInfoDto;
 import com.ssafy.newstagram.api.users.model.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -68,6 +69,20 @@ public class UserController {
 
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.success("USER_200", "회원정보 조회 성공", userInfo)
+        );
+    }
+
+    @PatchMapping("/me/nickname")
+    public ResponseEntity<?> updateMyNickname(@Valid @RequestBody UpdateNicknameRequestDto dto){
+        // 현재 사용자의 인증 정보에서 email 가져오기
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        CustomUserDetails userDetails = (CustomUserDetails) auth.getPrincipal();
+        String email = userDetails.getUsername();
+
+        userService.updateNickname(email, dto);
+
+        return ResponseEntity.status(HttpStatus.OK).body(
+                BaseResponse.successNoData("USER_200", "닉네임 변경 성공")
         );
     }
 }

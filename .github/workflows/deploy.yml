@@ -106,6 +106,7 @@ jobs:
               -e KAFKA_API_SECRET="${{ secrets.KAFKA_API_SECRET }}" \
               -e GMS_SECRET="${{ secrets.GMS_SECRET }}" \
               -e GMS_BASE_URL="${{ secrets.GMS_BASE_URL }}" \
+              -e GMS_LLM_URL="${{ secrets.GMS_LLM_URL }}" \
               ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_RSS }}:latest
 
   # 3. CD: API Server 배포
@@ -173,6 +174,7 @@ jobs:
               -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
               -e GMS_SECRET="${{ secrets.GMS_SECRET }}" \
               -e GMS_BASE_URL="${{ secrets.GMS_BASE_URL }}" \
+              -e GMS_LLM_URL="${{ secrets.GMS_LLM_URL }}" \
               -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
               -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
               -e GOOGLE_REDIRECT_URI="${{ secrets.GOOGLE_REDIRECT_URI }}" \
@@ -242,4 +244,5 @@ jobs:
               -e KAFKA_API_SECRET="${{ secrets.KAFKA_API_SECRET }}" \
               -e GMS_SECRET="${{ secrets.GMS_SECRET }}" \
               -e GMS_BASE_URL="${{ secrets.GMS_BASE_URL }}" \
+              -e GMS_LLM_URL="${{ secrets.GMS_LLM_URL }}" \
               ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_LOG }}:latest

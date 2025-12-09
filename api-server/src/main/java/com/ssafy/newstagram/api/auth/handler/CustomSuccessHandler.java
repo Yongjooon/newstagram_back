@@ -5,6 +5,7 @@ import com.ssafy.newstagram.api.auth.jwt.JWTUtil;
 import com.ssafy.newstagram.api.auth.model.dto.CustomOAuth2User;
 import com.ssafy.newstagram.api.auth.model.dto.LoginResponseDto;
 import com.ssafy.newstagram.api.common.BaseResponse;
+import com.ssafy.newstagram.api.users.model.service.UserService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -23,6 +24,7 @@ import java.util.Iterator;
 public class CustomSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final JWTUtil jwtUtil;
+    private final UserService userService;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
@@ -36,12 +38,15 @@ public class CustomSuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         GrantedAuthority auth = iterator.next();
         String role = auth.getAuthority();
 
-        String token = jwtUtil.createJwt(email, role);
+        String accessToken = jwtUtil.createAccessToken(email, role);
+        String refreshToken = jwtUtil.createRefreshToken(email);
+
+        userService.updateRefreshToken(email, refreshToken);
 
         BaseResponse<LoginResponseDto> res = BaseResponse.success(
                 "AUTH_200",
                 "로그인 성공",
-                new LoginResponseDto(token, null)
+                new LoginResponseDto(accessToken, refreshToken)
         );
 
         ObjectMapper objectMapper = new ObjectMapper();

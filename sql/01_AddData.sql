@@ -371,7 +371,7 @@ INSERT INTO rss_feeds (source_id, category_id, name, rss_url, is_active) VALUES
 
 
 
--- 매일경제 (MaeilKyungje)  -에러
+-- 매일경제 (MaeilKyungje)
 INSERT INTO rss_feeds (source_id, category_id, name, rss_url, is_active) VALUES
                                                                              (
                                                                                  (SELECT id FROM news_sources WHERE name = 'Mail'),
