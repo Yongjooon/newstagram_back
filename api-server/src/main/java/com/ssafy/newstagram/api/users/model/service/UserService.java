@@ -13,6 +13,4 @@ public interface UserService {
     UserInfoDto getUserInfoByEmail(String email);
     void updateNickname(String email, UpdateNicknameRequestDto dto);
     User getUserByEmail(String email);
-    void updateRefreshToken(String email, String newRefreshToken);
-    void deleteRefreshToken(String email);
 }

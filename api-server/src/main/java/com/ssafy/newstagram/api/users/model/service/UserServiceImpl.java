@@ -90,26 +90,4 @@ public class UserServiceImpl implements  UserService{
         return user;
     }
 
-    @Override
-    public void updateRefreshToken(String email, String newRefreshToken) {
-        int updated = userRepository.updateRefreshTokenByEmail(email, newRefreshToken);
-        if(updated == 0){
-            throw new IllegalArgumentException("존재하지 않거나 삭제된 계정입니다.");
-        }
-    }
-
-    @Override
-    public void deleteRefreshToken(String email) {
-        User user = userRepository.findByEmail(email);
-
-        if(user == null){
-            throw new IllegalArgumentException("존재하지 않거나 삭제된 계정입니다.");
-        }
-
-        if(user.getRefreshToken() == null){
-            return;
-        }
-
-        userRepository.clearRefreshToken(email);
-    }
 }

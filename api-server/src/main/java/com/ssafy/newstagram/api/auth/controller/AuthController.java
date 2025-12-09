@@ -2,6 +2,7 @@ package com.ssafy.newstagram.api.auth.controller;
 
 import com.ssafy.newstagram.api.auth.jwt.JWTUtil;
 import com.ssafy.newstagram.api.auth.model.dto.LoginResponseDto;
+import com.ssafy.newstagram.api.auth.model.service.RefreshTokenService;
 import com.ssafy.newstagram.api.common.BaseResponse;
 import com.ssafy.newstagram.api.auth.model.dto.RefreshTokenRequestDto;
 import com.ssafy.newstagram.api.users.model.dto.CustomUserDetails;
@@ -26,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final UserService userService;
+    private final RefreshTokenService refreshTokenService;
     private final JWTUtil jwtUtil;
 
     @PostMapping("/refresh")
@@ -54,14 +56,15 @@ public class AuthController {
         }
 
         User user = userService.getUserByEmail(email);
-        if(user == null || user.getRefreshToken() == null || !user.getRefreshToken().equals(refreshToken)){
+        String redisRefreshToken = refreshTokenService.getRefreshToken(email);
+        if(user == null || redisRefreshToken == null || !redisRefreshToken.equals(refreshToken)){
             throw new JwtException("Invalid refresh token");
         }
 
         String newAccessToken = jwtUtil.createAccessToken(email, user.getRole());
         String newRefreshToken = jwtUtil.createRefreshToken(email);
 
-        userService.updateRefreshToken(email, newRefreshToken);
+        refreshTokenService.saveRefreshToken(email, newRefreshToken);
 
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.success(
@@ -80,7 +83,7 @@ public class AuthController {
         CustomUserDetails userDetails = (CustomUserDetails) auth.getPrincipal();
         String email = userDetails.getUsername();
 
-        userService.deleteRefreshToken(email);
+        refreshTokenService.deleteRefreshToken(email);
 
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.successNoData(

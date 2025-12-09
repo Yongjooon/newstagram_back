@@ -5,7 +5,7 @@ import com.ssafy.newstagram.api.auth.jwt.JWTFilter;
 import com.ssafy.newstagram.api.auth.jwt.JWTUtil;
 import com.ssafy.newstagram.api.auth.jwt.LoginFilter;
 import com.ssafy.newstagram.api.auth.model.service.CustomOAuth2UserService;
-import com.ssafy.newstagram.api.users.model.service.UserService;
+import com.ssafy.newstagram.api.auth.model.service.RefreshTokenService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -31,7 +31,7 @@ public class SecurityConfig {
     private final JWTUtil jwtUtil;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final CustomSuccessHandler customSuccessHandler;
-    private final UserService userService;
+    private final RefreshTokenService refreshTokenService;
 
     @Bean
     public AuthenticationManager authenticationManager() throws Exception {
@@ -47,7 +47,7 @@ public class SecurityConfig {
         JWTFilter jwtFilter = new JWTFilter(jwtUtil);
 
         // LoginFilter 생성 + URL 설정
-        LoginFilter loginFilter = new LoginFilter(authManager, jwtUtil, userService);
+        LoginFilter loginFilter = new LoginFilter(authManager, jwtUtil, refreshTokenService);
         loginFilter.setFilterProcessesUrl("/auth/login"); // 로그인 URL
 
         // CORS 설정
