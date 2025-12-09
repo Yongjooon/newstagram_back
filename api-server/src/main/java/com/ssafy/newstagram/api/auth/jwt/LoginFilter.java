@@ -6,6 +6,7 @@ import com.ssafy.newstagram.api.auth.model.dto.LoginResponseDto;
 import com.ssafy.newstagram.api.common.BaseResponse;
 import com.ssafy.newstagram.api.common.ErrorDetail;
 import com.ssafy.newstagram.api.users.model.dto.CustomUserDetails;
+import com.ssafy.newstagram.api.users.model.service.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,10 +26,12 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
     private final AuthenticationManager authenticationManager;
     private final JWTUtil jwtUtil;
+    private final UserService userService;
 
-    public LoginFilter(AuthenticationManager authenticationManager, JWTUtil jwtUtil) {
+    public LoginFilter(AuthenticationManager authenticationManager, JWTUtil jwtUtil, UserService userService) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
+        this.userService = userService;
     }
 
     @Override
@@ -66,6 +69,8 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
         String accessToken = jwtUtil.createAccessToken(email, role);
         String refreshToken = jwtUtil.createRefreshToken(email);
+
+        userService.updateRefreshToken(email, refreshToken);
 
         BaseResponse<LoginResponseDto> res = BaseResponse.success(
                 "AUTH_200",
