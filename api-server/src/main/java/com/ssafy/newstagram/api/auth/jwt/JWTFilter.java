@@ -21,53 +21,69 @@ public class JWTFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
-        // request에서 Authorization 헤더 가져옴
         String authorization = request.getHeader("Authorization");
 
-        // null 검증
         if (authorization == null || !authorization.startsWith("Bearer ")) {
-
             System.out.println("token null");
             filterChain.doFilter(request, response); // 다음 필터로 넘김
-
             return;
         }
 
-        // 순수 토큰 추출 (Bearer 부분 제거)
         String token = authorization.split(" ")[1];
         System.out.println("token value=" + token);
 
-        // 토큰의 만료 여부 검증
-        if (jwtUtil.isExpired(token)) {
+        try {
+            if (jwtUtil.isExpired(token)) {
+                sendJwtError(response, "AUTH_401", "토큰이 만료되었습니다.");
+                return;
+            }
 
-            System.out.println("token expired");
-            filterChain.doFilter(request, response); // 다음 필터로 넘김
+            String email = jwtUtil.getEmail(token);
+            String role = jwtUtil.getRole(token);
 
-            return;
+            User user = User.builder()
+                    .email(email)
+                    .passwordHash("temppassword1234")
+                    .role(role)
+                    .build();
+
+            CustomUserDetails customUserDetails = new CustomUserDetails(user);
+
+            // 스프링 시큐리티 인증 토큰 생성
+            Authentication authToken = new UsernamePasswordAuthenticationToken(
+                    customUserDetails,
+                    null,
+                    customUserDetails.getAuthorities()
+            );
+
+            SecurityContextHolder.getContext().setAuthentication(authToken);
+            filterChain.doFilter(request, response);
+
+        } catch (io.jsonwebtoken.security.SignatureException e) {
+            sendJwtError(response, "AUTH_401", "유효하지 않은 토큰입니다.");
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            sendJwtError(response, "AUTH_401", "토큰이 만료되었습니다.");
+        } catch (Exception e) {
+            sendJwtError(response, "AUTH_500", "토큰 처리 중 서버 오류가 발생했습니다.");
         }
-
-        // 토큰에서 email과 role 획득
-        String email = jwtUtil.getEmail(token);
-        String role = jwtUtil.getRole(token);
-
-        User user = User.builder()
-                .email(email)
-                .passwordHash("temppassword1234")
-                .role(role)
-                .build();
-
-        CustomUserDetails customUserDetails = new CustomUserDetails(user);
-
-        // 스프링 시큐리티 인증 토큰 생성
-        Authentication authToken = new UsernamePasswordAuthenticationToken(customUserDetails, null, customUserDetails.getAuthorities());
-        // 세션에 사용자 등록
-        SecurityContextHolder.getContext().setAuthentication(authToken);
-
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-//        System.out.println("Authentication = " + auth);
-//        System.out.println("Principal = " + auth.getPrincipal());
-//        System.out.println("Authorities = " + auth.getAuthorities());
-
-        filterChain.doFilter(request, response);
     }
+
+    private void sendJwtError(HttpServletResponse response,
+                              String code,
+                              String message) throws IOException {
+
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json;charset=UTF-8");
+
+        com.ssafy.newstagram.api.common.BaseResponse<?> body =
+                com.ssafy.newstagram.api.common.BaseResponse.error(
+                        code,
+                        message,
+                        null
+                );
+
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        response.getWriter().write(mapper.writeValueAsString(body));
+    }
+
 }
