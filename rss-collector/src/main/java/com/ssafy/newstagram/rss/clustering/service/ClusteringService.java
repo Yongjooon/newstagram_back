@@ -1,5 +1,6 @@
 package com.ssafy.newstagram.rss.clustering.service;
 
+import com.ssafy.newstagram.rss.clustering.repository.PeriodRecommendationRepository;
 import com.ssafy.newstagram.rss.clustering.util.EmbeddingLiteralUtil;
 import com.ssafy.newstagram.rss.mapper.ArticleMapper;
 import com.ssafy.newstagram.rss.vo.Article;
@@ -16,6 +17,7 @@ import java.util.Map;
 public class ClusteringService {
 
     private final ArticleMapper articleMapper;
+    private final PeriodRecommendationRepository periodRecommendationRepository;
     private final DbscanService dbscanService;
 
     public void clustering() {
@@ -40,6 +42,8 @@ public class ClusteringService {
         // 5) 클러스터별 중심 벡터 계산
         Map<Integer, double[]> representativeVectors = findClusterRepresentatives(embeddings, clusterGroups);
 
+        // 6) 클러스터 정렬 및 저장
+        saveClusterRankResult(embeddings, articles, clusterGroups, representativeVectors);
     }
 
 
@@ -128,6 +132,40 @@ public class ClusteringService {
         }
         double cos = dot / (Math.sqrt(na) * Math.sqrt(nb));
         return 1.0 - cos;
+    }
+
+    /**
+     * 클러스터 크기 → 클러스터 내부 중심 가까운 순으로 전체 데이터 랭킹 생성
+     *
+     * @param clusterGroups 클러스터별 index 모음
+     * @param representatives 클러스터별 medoid 벡터
+     */
+    public void saveClusterRankResult(
+            double[][] embeddings,
+            List<Article> articles,
+            Map<Integer, List<Integer>> clusterGroups,
+            Map<Integer, double[]> representatives
+    ) {
+        int[] orderedClusterIds = new int[articles.size()];
+        // 1) 클러스터 크기 기반 정렬 (내림차순)
+        List<Map.Entry<Integer, List<Integer>>> sortedClusters = new ArrayList<>(clusterGroups.entrySet());
+        sortedClusters.sort((a, b) -> b.getValue().size() - a.getValue().size());
+
+        int orderClusterId = 1;  // 크기가 제일 큰 cluster의 id
+
+        // 2) 클러스터 순서대로 내부 정렬 수행
+        for (Map.Entry<Integer, List<Integer>> entry : sortedClusters) {
+            int clusterId = entry.getKey();
+            List<Integer> indices = entry.getValue();
+            double[] medoid = representatives.get(clusterId);
+
+            // ranking: 클러스터 크기 역순, score: 중심 벡터까지의 거리 순
+            for (int idx : indices) {
+                double distance = cosineDistance(embeddings[idx], medoid);
+                periodRecommendationRepository.insertRankingAndScore("dbscan", orderClusterId, distance, articles.get(idx).getId());
+            }
+            orderClusterId++;
+        }
     }
 
 }
