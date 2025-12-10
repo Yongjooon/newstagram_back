@@ -28,8 +28,8 @@ public class RssBatchConfig {
     public TaskExecutor rssTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(7); //한번에 실행할 신문사 개수
-        executor.setMaxPoolSize(8);
-        executor.setQueueCapacity(10);
+        executor.setMaxPoolSize(7);
+        executor.setQueueCapacity(0);
         executor.setThreadNamePrefix("RssBatch-");
         executor.initialize();
         return executor;
