@@ -17,4 +17,11 @@ public interface ArticleMapper {
             @Param("id") Long id,
             @Param("embedding") String EmbeddingLiteral
     );
+
+    // pgvector → 문자열로 조회 (embedding 제대로 가져오기 위한 추가)
+    String findEmbeddingLiteralById(@Param("id") Long id);
+
+    // 문자열 literal을 그대로 Article 객체의 embedding 필드에 매핑할 때 사용
+    List<Article> findAllWithEmbeddingLiteral();
+
 }
