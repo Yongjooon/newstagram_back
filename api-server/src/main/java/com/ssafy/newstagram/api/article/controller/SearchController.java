@@ -22,7 +22,7 @@ public class SearchController {
 
     private final SearchService searchService;
 
-    @Operation(summary = "Semantic Search", description = "Search articles using natural language query.")
+    @Operation(summary = "Semantic Search", description = "Search articles using Rule-based + LLM Hybrid approach.")
     @PostMapping
     public ResponseEntity<List<ArticleDto>> searchArticles(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -41,7 +41,7 @@ public class SearchController {
         return ResponseEntity.ok(results);
     }
 
-    @Operation(summary = "Semantic Search (Test)", description = "Search articles without user authentication for testing purposes.")
+    @Operation(summary = "Semantic Search (Test)", description = "Search articles using Rule-based + LLM Hybrid approach without user authentication.")
     @PostMapping("/test")
     public ResponseEntity<List<ArticleDto>> searchArticlesTest(@RequestBody SearchRequest request) {
         
