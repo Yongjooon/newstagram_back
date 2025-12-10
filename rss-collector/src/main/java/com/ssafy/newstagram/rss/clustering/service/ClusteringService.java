@@ -37,6 +37,9 @@ public class ClusteringService {
         // 4) 클러스터별 index 그룹핑
         Map<Integer, List<Integer>> clusterGroups = groupByCluster(labels);
 
+        // 5) 클러스터별 중심 벡터 계산
+        Map<Integer, double[]> representativeVectors = findClusterRepresentatives(embeddings, clusterGroups);
+
     }
 
 
@@ -56,6 +59,75 @@ public class ClusteringService {
         }
 
         return clusterMap;
+    }
+
+    /**
+     * 각 클러스터의 대표 벡터(Medoid) 찾기
+     *
+     * Medoid = 클러스터 내부에서 "다른 점들과의 거리 합이 최소"인 벡터
+     */
+    public Map<Integer, double[]> findClusterRepresentatives(
+            double[][] embeddings,
+            Map<Integer, List<Integer>> clusterGroups) {
+
+        Map<Integer, double[]> representatives = new HashMap<>();
+
+        for (Map.Entry<Integer, List<Integer>> entry : clusterGroups.entrySet()) {
+            int clusterId = entry.getKey();
+            List<Integer> indices = entry.getValue();
+
+            double[] medoid = findMedoid(embeddings, indices);
+            representatives.put(clusterId, medoid);
+        }
+
+        return representatives;
+    }
+
+    /**
+     * 클러스터 내 벡터 중 가장 중심에 가까운 벡터(Medoid) 계산
+     */
+    private double[] findMedoid(double[][] embeddings, List<Integer> indices) {
+        double minTotalDist = Double.MAX_VALUE;
+        double[] bestVector = null;
+
+        for (int i : indices) {
+            double totalDist = 0.0;
+
+            for (int j : indices) {
+                if (i != j) {
+                    totalDist += cosineDistance(embeddings[i], embeddings[j]);
+                }
+            }
+
+            if (totalDist < minTotalDist) {
+                minTotalDist = totalDist;
+                bestVector = embeddings[i];
+            }
+        }
+
+        return bestVector;
+    }
+
+    /**
+     * cosine 거리 계산
+     */
+    public double cosineDistance(double[] a, double[] b) {
+        double dot = 0.0;
+        double na = 0.0;
+        double nb = 0.0;
+        int n = Math.min(a.length, b.length);
+        for (int i = 0; i < n; i++) {
+            double va = a[i];
+            double vb = b[i];
+            dot += va * vb;
+            na += va * va;
+            nb += vb * vb;
+        }
+        if (na == 0 || nb == 0) {
+            return 1.0;
+        }
+        double cos = dot / (Math.sqrt(na) * Math.sqrt(nb));
+        return 1.0 - cos;
     }
 
 }
