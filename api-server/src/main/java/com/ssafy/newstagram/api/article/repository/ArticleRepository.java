@@ -19,7 +19,7 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
     @Query(value = "SELECT id, title, content, description, url, thumbnail_url, author, published_at, created_at, updated_at, feed_id, category_id, sources_id, NULL as embedding " +
             "FROM articles " +
             "WHERE (:categoryId IS NULL OR category_id = :categoryId) " +
-            "AND (cast(:startDate as timestamp) IS NULL OR created_at >= cast(:startDate as timestamp)) " +
+            "AND (cast(:startDate as timestamp) IS NULL OR published_at >= cast(:startDate as timestamp)) " +
             "ORDER BY embedding <=> cast(:embedding as vector) " +
             "LIMIT :limit", nativeQuery = true)
     List<Article> findByEmbeddingSimilarityWithFilters(

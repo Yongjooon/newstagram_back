@@ -40,6 +40,9 @@ dependencies {
 
     // Lombok
     implementation 'org.projectlombok:lombok:1.18.42'
+
+    // Komoran (Korean Morphological Analyzer)
+    implementation 'com.github.shin285:KOMORAN:3.3.9'
 }
 
 bootJar {
