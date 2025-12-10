@@ -40,23 +40,18 @@ public class UserServiceImpl implements  UserService{
     }
 
     @Override
-    public void deleteUserByEmail(String email) {
-        User user = userRepository.findByEmail(email);
-
-        if(user == null){
-            throw new IllegalArgumentException("회원을 찾을 수 없습니다.");
-        }
-
+    public void deleteUserById(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(
+            () -> new IllegalArgumentException("회원을 찾을 수 없습니다.")
+        );
         userRepository.delete(user); // soft delete
     }
 
     @Override
-    public UserInfoDto getUserInfoByEmail(String email) {
-        User user = userRepository.findByEmail(email);
-
-        if(user == null){
-            throw new IllegalArgumentException("회원을 찾을 수 없습니다.");
-        }
+    public UserInfoDto getUserInfoByUserId(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(
+                () -> new IllegalArgumentException("회원을 찾을 수 없습니다.")
+        );
 
         return UserInfoDto.builder()
             .email(user.getEmail())
@@ -67,26 +62,13 @@ public class UserServiceImpl implements  UserService{
     }
 
     @Override
-    public void updateNickname(String email, UpdateNicknameRequestDto dto) {
-        User user = userRepository.findByEmail(email);
-
-        if(user == null){
-            throw new IllegalArgumentException("회원을 찾을 수 없습니다.");
-        }
+    public void updateNickname(Long userId, UpdateNicknameRequestDto dto) {
+        User user = userRepository.findById(userId).orElseThrow(
+                () -> new IllegalArgumentException("회원을 찾을 수 없습니다.")
+        );
 
         user.updateNickname(dto.getNewNickname());
         userRepository.save(user);
-    }
-
-    @Override
-    public User getUserByEmail(String email) {
-        User user = userRepository.findByEmail(email);
-
-        if(user == null){
-            throw new IllegalArgumentException("회원을 찾을 수 없습니다.");
-        }
-
-        return user;
     }
 
     @Override
@@ -98,11 +80,10 @@ public class UserServiceImpl implements  UserService{
 
     @Transactional
     @Override
-    public void updatePassword(String email, UpdatePasswordRequestDto dto) {
-        User user = userRepository.findByEmail(email);
-        if(user == null){
-            throw new IllegalArgumentException("회원을 찾을 수 없습니다.");
-        }
+    public void updatePassword(Long userId, UpdatePasswordRequestDto dto) {
+        User user = userRepository.findById(userId).orElseThrow(
+                () -> new IllegalArgumentException("회원을 찾을 수 없습니다.")
+        );
 
         if(!passwordEncoder.matches(dto.getCurrentPassword(), user.getPasswordHash())){
             throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");

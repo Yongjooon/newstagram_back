@@ -6,6 +6,7 @@ import com.ssafy.newstagram.api.auth.model.service.AuthService;
 import com.ssafy.newstagram.api.auth.model.service.RefreshTokenService;
 import com.ssafy.newstagram.api.common.BaseResponse;
 import com.ssafy.newstagram.api.auth.model.dto.RefreshTokenRequestDto;
+import com.ssafy.newstagram.api.users.model.dto.CustomUserDetails;
 import com.ssafy.newstagram.api.users.model.service.UserService;
 import com.ssafy.newstagram.domain.user.entity.User;
 import io.jsonwebtoken.JwtException;
@@ -68,8 +69,8 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(@AuthenticationPrincipal Long userId){
-        authService.logout(userId);
+    public ResponseEntity<?> logout(@AuthenticationPrincipal CustomUserDetails userDetails){
+        authService.logout(userDetails.getUserId());
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.successNoData(
                         "AUTH_200",

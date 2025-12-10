@@ -11,8 +11,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -38,61 +37,32 @@ public class UserController {
 
     @DeleteMapping("/me")
     @Operation(summary = "회원탈퇴")
-    public ResponseEntity<?> deleteMyAccount(){
-
-        // 현재 사용자의 인증 정보에서 email 가져오기
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        CustomUserDetails userDetails = (CustomUserDetails) auth.getPrincipal();
-        String email = userDetails.getUsername();
-
-//        System.out.println("[" + email + "] 회원 탈퇴 요청");
-
-        userService.deleteUserByEmail(email);
-
+    public ResponseEntity<?> deleteMyAccount(@AuthenticationPrincipal CustomUserDetails userDetails){
+        userService.deleteUserById(userDetails.getUserId());
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.successNoData("USER_200", "회원탈퇴 완료")
         );
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> getMyAccount(){
-
-        // 현재 사용자의 인증 정보에서 email 가져오기
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        CustomUserDetails userDetails = (CustomUserDetails) auth.getPrincipal();
-        String email = userDetails.getUsername();
-
-        UserInfoDto userInfo = userService.getUserInfoByEmail(email);
-
+    public ResponseEntity<?> getMyAccount(@AuthenticationPrincipal CustomUserDetails userDetails){
+        UserInfoDto userInfo = userService.getUserInfoByUserId(userDetails.getUserId());
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.success("USER_200", "회원정보 조회 성공", userInfo)
         );
     }
 
     @PatchMapping("/me/nickname")
-    public ResponseEntity<?> updateMyNickname(@Valid @RequestBody UpdateNicknameRequestDto dto){
-        // 현재 사용자의 인증 정보에서 email 가져오기
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        CustomUserDetails userDetails = (CustomUserDetails) auth.getPrincipal();
-        String email = userDetails.getUsername();
-
-        userService.updateNickname(email, dto);
-
+    public ResponseEntity<?> updateMyNickname(@Valid @RequestBody UpdateNicknameRequestDto dto, @AuthenticationPrincipal CustomUserDetails userDetails){
+        userService.updateNickname(userDetails.getUserId(), dto);
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.successNoData("USER_200", "닉네임 변경 성공")
         );
     }
 
     @PatchMapping("/me/password")
-    public ResponseEntity<?> updatePassword(@Valid @RequestBody UpdatePasswordRequestDto dto){
-
-        // 현재 사용자의 인증 정보에서 email 가져오기
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        CustomUserDetails userDetails = (CustomUserDetails) auth.getPrincipal();
-        String email = userDetails.getUsername();
-
-        userService.updatePassword(email, dto);
-
+    public ResponseEntity<?> updatePassword(@Valid @RequestBody UpdatePasswordRequestDto dto, @AuthenticationPrincipal CustomUserDetails userDetails){
+        userService.updatePassword(userDetails.getUserId(), dto);
         return ResponseEntity.status(HttpStatus.OK).body(
           BaseResponse.successNoData("USER_200", "비밀번호 변경 성공")
         );

@@ -1,5 +1,6 @@
 package com.ssafy.newstagram.api.auth.jwt;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -26,19 +27,19 @@ public class JWTUtil {
     }
 
     public Long getUserId(String token) {
-        return Long.parseLong(Jwts.parser().verifyWith(SECRET_KEY).build().parseSignedClaims(token).getPayload().getSubject());
+        return Long.parseLong(parseToken(token).getSubject());
     }
 
     public String getRole(String token) {
-        return Jwts.parser().verifyWith(SECRET_KEY).build().parseSignedClaims(token).getPayload().get("role", String.class);
+        return parseToken(token).get("role", String.class);
     }
 
     public String getType(String token){
-        return Jwts.parser().verifyWith(SECRET_KEY).build().parseSignedClaims(token).getPayload().get("type", String.class);
+        return parseToken(token).get("type", String.class);
     }
 
     public Boolean isExpired(String token) {
-        return Jwts.parser().verifyWith(SECRET_KEY).build().parseSignedClaims(token).getPayload().getExpiration().before(new Date());
+        return parseToken(token).getExpiration().before(new Date(System.currentTimeMillis()));
     }
 
     public String createAccessToken(Long userId, String role) {
@@ -65,5 +66,14 @@ public class JWTUtil {
                 .expiration(expiryDate)
                 .signWith(SECRET_KEY)
                 .compact();
+    }
+
+    private Claims parseToken(String token){
+        return Jwts.parser()
+                .verifyWith(SECRET_KEY)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
     }
 }
