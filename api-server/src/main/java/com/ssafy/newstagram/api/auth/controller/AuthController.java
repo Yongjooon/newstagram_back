@@ -10,6 +10,7 @@ import com.ssafy.newstagram.api.users.model.dto.CustomUserDetails;
 import com.ssafy.newstagram.api.users.model.service.UserService;
 import com.ssafy.newstagram.domain.user.entity.User;
 import io.jsonwebtoken.JwtException;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class AuthController {
     private final JWTUtil jwtUtil;
 
     @PostMapping("/refresh")
+    @Operation(summary = "토큰 재발급")
     public ResponseEntity<?> refreshAccessToken(@RequestBody RefreshTokenRequestDto dto, HttpServletResponse response){
 //        authService.refresh(dto);
 
@@ -69,6 +71,7 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
+    @Operation(summary = "로그아웃")
     public ResponseEntity<?> logout(@AuthenticationPrincipal CustomUserDetails userDetails){
         authService.logout(userDetails.getUserId());
         return ResponseEntity.status(HttpStatus.OK).body(
