@@ -10,6 +10,10 @@ import com.ssafy.newstagram.api.users.model.dto.CustomUserDetails;
 import com.ssafy.newstagram.api.users.model.service.UserService;
 import com.ssafy.newstagram.domain.user.entity.User;
 import io.jsonwebtoken.JwtException;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +37,27 @@ public class AuthController {
     private final JWTUtil jwtUtil;
 
     @PostMapping("/refresh")
-    public ResponseEntity<?> refreshAccessToken(@RequestBody RefreshTokenRequestDto dto, HttpServletResponse response){
+    @Operation(
+            summary = "토큰 재발급",
+            description = "Refresh Token을 사용하여 새로운 Access Token을 발급합니다.\n\n"
+                    + "- 만료된 Access Token을 재발급할 때 사용됩니다.\n"
+                    + "- Refresh Token이 유효하지 않거나 만료된 경우 재발급에 실패합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "토큰 재발급 성공"
+            )
+    })
+    public ResponseEntity<?> refreshAccessToken(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Refresh Token 정보",
+                    required = true
+            )
+            @RequestBody RefreshTokenRequestDto dto,
+            @Parameter(hidden = true)
+            HttpServletResponse response
+    ) {
 //        authService.refresh(dto);
 
         String refreshToken = dto.getRefreshToken();
@@ -69,7 +93,23 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(@AuthenticationPrincipal CustomUserDetails userDetails){
+    @Operation(
+            summary = "로그아웃",
+            description = "현재 로그인된 사용자를 로그아웃 처리합니다.\n\n"
+                    + "- JWT 인증이 필요합니다.\n"
+                    + "- 서버에 저장된 Refresh Token이 무효화됩니다.\n"
+                    + "- 클라이언트는 저장된 토큰을 삭제해야 합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "로그아웃 성공"
+            )
+    })
+    public ResponseEntity<?> logout(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
         authService.logout(userDetails.getUserId());
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.successNoData(
