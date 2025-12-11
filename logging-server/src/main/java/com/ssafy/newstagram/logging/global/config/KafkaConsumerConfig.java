@@ -1,10 +1,13 @@
 package com.ssafy.newstagram.logging.global.config;
 
+import com.ssafy.newstagram.domain.constant.KafkaTopic;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
@@ -16,10 +19,28 @@ import org.springframework.util.backoff.FixedBackOff;
 @Slf4j
 public class KafkaConsumerConfig {
 
+    // 기사 클릭 관련 토픽
+    @Bean
+    public NewTopic clickLogTopic() {
+        return TopicBuilder.name(KafkaTopic.Log.INTERACTION)
+                .partitions(3)
+                .replicas(3)
+                .build();
+    }
+
+    // 기사 클릭 관련 토픽 DLT
+    @Bean
+    public NewTopic dltTopic() {
+        return TopicBuilder.name(KafkaTopic.Log.INTERACTION_DLT)
+                .partitions(3)
+                .replicas(3)
+                .build();
+    }
+
     @Bean
     public DefaultErrorHandler errorHandler(KafkaTemplate<?, ?> kafkaTemplate) {
-        long interval = 30000L;
-        long maxAttempts = 5L;
+        long interval = 30000L; // 30초마다 재시도
+        long maxAttempts = 5L; // 총 5회 반복
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaTemplate,(r, e) -> new org.apache.kafka.common.TopicPartition(r.topic() + ".DLT", r.partition()));
         FixedBackOff backOff = new FixedBackOff(interval, maxAttempts);
 
