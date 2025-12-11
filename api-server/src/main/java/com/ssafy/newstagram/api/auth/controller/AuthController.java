@@ -2,6 +2,9 @@ package com.ssafy.newstagram.api.auth.controller;
 
 import com.ssafy.newstagram.api.auth.jwt.JWTUtil;
 import com.ssafy.newstagram.api.auth.model.dto.LoginResponseDto;
+import com.ssafy.newstagram.api.auth.model.dto.PasswordResetRequestDto;
+import com.ssafy.newstagram.api.auth.model.dto.PasswordResetRequestRequestDto;
+import com.ssafy.newstagram.api.auth.model.service.AuthService;
 import com.ssafy.newstagram.api.auth.model.service.RefreshTokenService;
 import com.ssafy.newstagram.api.common.BaseResponse;
 import com.ssafy.newstagram.api.auth.model.dto.RefreshTokenRequestDto;
@@ -20,6 +23,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -28,6 +33,7 @@ public class AuthController {
 
     private final UserService userService;
     private final RefreshTokenService refreshTokenService;
+//    private final AuthService authService;
     private final JWTUtil jwtUtil;
 
     @PostMapping("/refresh")
@@ -89,6 +95,29 @@ public class AuthController {
                 BaseResponse.successNoData(
                         "AUTH_200",
                         "로그아웃 성공"
+                )
+        );
+    }
+
+    @PostMapping("/password/reset-request")
+    public ResponseEntity<?> passwordResetRequest(@RequestBody PasswordResetRequestRequestDto dto){
+//        authService.requestPasswordReset(dto);
+        return ResponseEntity.status(HttpStatus.OK).body(
+                BaseResponse.success(
+                        "AUTH_200",
+                        "비밀번호 초기화 요청 성공",
+                        Map.of("email", dto.getEmail())
+                )
+        );
+    }
+
+    @PostMapping("/password/reset")
+    public ResponseEntity<?> passwordReset(@RequestBody PasswordResetRequestDto dto){
+//        authService.passwordReset(dto);
+        return ResponseEntity.status(HttpStatus.OK).body(
+                BaseResponse.successNoData(
+                        "AUTH_200",
+                        "비밀번호 초기화 성공"
                 )
         );
     }
