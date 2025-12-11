@@ -92,6 +92,7 @@ jobs:
 
             # 컨테이너 실행 (Prod 프로필 및 환경변수 주입)
             docker run -d --name rss-collector \
+              -e TZ=Asia/Seoul
               -p 8082:8082 \
               -v /home/ec2-user/logs/rss-collector:/var/log/newstagram \
               -e LOGGING_FILE_NAME=/var/log/newstagram/application.log \
@@ -158,6 +159,7 @@ jobs:
             mkdir -p /home/ec2-user/logs/api-server
 
             docker run -d --name api-server \
+              -e TZ=Asia/Seoul
               -p 8080:8080 \
               -v /home/ec2-user/logs/api-server:/var/log/newstagram \
               -e LOGGING_FILE_NAME=/var/log/newstagram/application.log \
@@ -228,6 +230,7 @@ jobs:
             mkdir -p /home/ec2-user/logs/logging-server
 
             docker run -d --name logging-server \
+              -e TZ=Asia/Seoul
               -p 8081:8081 \
               -v /home/ec2-user/logs/logging-server:/var/log/newstagram \
               -e LOGGING_FILE_NAME=/var/log/newstagram/application.log \

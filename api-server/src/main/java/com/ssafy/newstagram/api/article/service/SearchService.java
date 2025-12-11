@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.newstagram.api.article.dto.ArticleDto;
 import com.ssafy.newstagram.api.article.dto.EmbeddingResponse;
 import com.ssafy.newstagram.api.article.dto.IntentAnalysisResponse;
+import com.ssafy.newstagram.api.article.dto.SearchHistoryDto;
 import com.ssafy.newstagram.api.article.repository.ArticleRepository;
 import com.ssafy.newstagram.api.article.repository.NewsCategoryRepository;
 import com.ssafy.newstagram.api.users.repository.UserRepository;
@@ -54,6 +55,9 @@ public class SearchService {
     private static final String MODEL_NAME = "text-embedding-3-small";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Komoran komoran = new Komoran(DEFAULT_MODEL.FULL);
+    private static final double INITIAL_DISTANCE_THRESHOLD = 0.30;
+    private static final double MAX_DISTANCE_THRESHOLD = 0.80;
+    private static final double STEP_DISTANCE_THRESHOLD = 0.05;
 
     @Transactional
     public List<ArticleDto> searchArticles(Long userId, String query, int limit) {
@@ -72,9 +76,13 @@ public class SearchService {
         IntentAnalysisResponse intent = analyzeIntentLocal(query);
 
         if (intent == null) {
-            intent = new IntentAnalysisResponse(query, null, 0);
-            log.info("[Search] Local Analysis Failed or Skipped. Using raw query.");
+            intent = new IntentAnalysisResponse(query, null, 7, new ArrayList<>()); // Default 7 days if analysis fails
+            log.info("[Search] Local Analysis Failed or Skipped. Using raw query with default 7 days.");
         } else {
+            // Default to 7 days if no date specified
+            if (intent.getDateRange() == 0) {
+                intent.setDateRange(7);
+            }
             log.info("[Search] Local Analysis Result: Query={}, Category={}, DateRange={}", 
                     intent.getQuery(), intent.getCategory(), intent.getDateRange());
         }
@@ -98,8 +106,42 @@ public class SearchService {
             startDate = LocalDateTime.now().minusDays(intent.getDateRange());
         }
 
-        List<Article> articles = articleRepository.findByEmbeddingSimilarityWithFilters(
-                embeddingString, limit, categoryId, startDate);
+        // Optimization: Single DB Query with MAX threshold and large limit
+        // Instead of looping DB queries, fetch a larger candidate pool once.
+        // Since results are ordered by distance, the top results are the best matches.
+        int fetchLimit = limit * 10; // Fetch plenty of candidates to handle filtering
+        
+        log.info("[Search] Searching once with threshold: {}, fetchLimit: {}", MAX_DISTANCE_THRESHOLD, fetchLimit);
+        
+        List<Article> candidates = articleRepository.findByEmbeddingSimilarityWithFilters(
+                embeddingString, fetchLimit, categoryId, startDate, MAX_DISTANCE_THRESHOLD);
+
+        List<Article> articles = new ArrayList<>();
+
+        // Filter candidates based on keywords
+        if (intent.getKeywords() != null && !intent.getKeywords().isEmpty()) {
+            List<String> requiredKeywords = intent.getKeywords();
+            for (Article candidate : candidates) {
+                if (articles.size() >= limit) break;
+                
+                String title = candidate.getTitle() != null ? candidate.getTitle() : "";
+                String content = candidate.getContent() != null ? candidate.getContent() : "";
+                String textToCheck = title + " " + content;
+                
+                // Check if at least one keyword is present
+                boolean match = requiredKeywords.stream()
+                        .anyMatch(keyword -> textToCheck.contains(keyword));
+                
+                if (match) {
+                    articles.add(candidate);
+                }
+            }
+        } else {
+            // No keywords to filter, just take top N
+            articles = candidates.stream()
+                    .limit(limit)
+                    .collect(Collectors.toList());
+        }
 
         return articles.stream()
                 .map(this::convertToDto)
@@ -123,25 +165,45 @@ public class SearchService {
                     .map(t -> t.getMorph() + "(" + t.getPos() + ")")
                     .collect(Collectors.joining(", ")));
             
+            StringBuilder currentChunk = new StringBuilder();
+
             for (Token token : tokenList) {
                 String morph = token.getMorph();
                 String pos = token.getPos();
                 String matchedCat = matchCategory(morph);
                 int matchedDate = matchDateRange(morph);
                 
+                // 1. 카테고리/날짜 키워드 처리 (임베딩에서 제외)
                 if (matchedCat != null) {
+                    flushChunk(cleanKeywords, currentChunk); // 이전 청크 저장
                     if (category == null) {
                         category = matchedCat;
-                        primaryCategoryKeyword = morph; // 키워드 저장
-                    } else {
-                        cleanKeywords.add(morph);
+                        primaryCategoryKeyword = morph;
                     }
-                } else if (matchedDate != 0) {
+                    continue;
+                }
+                
+                if (matchedDate != 0) {
+                    flushChunk(cleanKeywords, currentChunk); // 이전 청크 저장
                     if (dateRange == 0) dateRange = matchedDate;
-                } else if (!isStopWord(morph) && isSearchablePos(pos)) {
-                    cleanKeywords.add(morph);
+                    continue;
+                }
+
+                // 2. 불용어 처리 (임베딩에서 제외)
+                if (isStopWord(morph)) {
+                    flushChunk(cleanKeywords, currentChunk); // 이전 청크 저장
+                    continue;
+                }
+
+                // 3. 검색어 병합 (Chunking)
+                if (isSearchablePos(pos)) {
+                    currentChunk.append(morph); // 공백 없이 병합 (예: 기아+타이거즈 -> 기아타이거즈)
+                } else {
+                    flushChunk(cleanKeywords, currentChunk); // 조사/어미 등 만나면 청크 종료
                 }
             }
+            flushChunk(cleanKeywords, currentChunk); // 남은 청크 저장
+
         } catch (Exception e) {
             log.error("[Search] Komoran Analysis Failed", e);
         }
@@ -177,19 +239,35 @@ public class SearchService {
         String finalQuery = cleanKeywords.isEmpty() ? query : String.join(" ", cleanKeywords);
         if (finalQuery.isBlank()) finalQuery = query;
         
-        return new IntentAnalysisResponse(finalQuery, category, dateRange);
+        return new IntentAnalysisResponse(finalQuery, category, dateRange, cleanKeywords);
+    }
+
+    private void flushChunk(List<String> keywords, StringBuilder chunk) {
+        if (chunk.length() > 0) {
+            String keyword = chunk.toString();
+            keywords.add(keyword);
+            log.debug("[Search] Chunk added: {}", keyword);
+            chunk.setLength(0); // 버퍼 초기화
+        }
     }
 
     private boolean isSearchablePos(String pos) {
-        // NNG: 일반명사, NNP: 고유명사, SL: 외국어, SH: 한자, SN: 숫자
-        return pos.equals("NNG") || pos.equals("NNP") || pos.equals("SL") || pos.equals("SH") || pos.equals("SN");
+        // NNG(일반명사) 포함: NNP(고유명사), SL(외국어), SH(한자), SN(숫자)
+        // 연속된 명사를 병합하기 위해 NNG도 포함시킴 (단, 불용어 필터링 필수)
+        return "NNG".equals(pos) || "NNP".equals(pos) || "SL".equals(pos) || "SH".equals(pos) || "SN".equals(pos);
     }
 
     private boolean isStopWord(String word) {
-        return word.equals("뉴스") || word.equals("기사");
-    }
-
-    private String matchCategory(String word) {
+        return word.equals("뉴스") || word.equals("기사") || word.equals("관련") || word.equals("소식") || 
+               word.equals("내용") || word.equals("대해") || word.equals("관하") || word.equals("궁금") || 
+               word.equals("알려") || word.equals("주") || word.equals("좀") || word.equals("어떻") || 
+               word.equals("무엇") || word.equals("어") || word.equals("하") || word.equals("되") || 
+               word.equals("이") || word.equals("가") || word.equals("을") || word.equals("를") || 
+               word.equals("은") || word.equals("는") || word.equals("의") || word.equals("에") || 
+               word.equals("에서") || word.equals("로") || word.equals("으로") || word.equals("와") || 
+               word.equals("과") || word.equals("도") || word.equals("만") || word.equals("나") || 
+               word.equals("이나") || word.equals("부터") || word.equals("까지") || word.equals("필요");
+    }    private String matchCategory(String word) {
         // 1. TOP (속보, 헤드라인)
         if (word.equals("속보") || word.equals("헤드라인") || word.equals("주요")) return "TOP";
         
@@ -353,21 +431,55 @@ public class SearchService {
                 .build();
     }
 
-    public List<String> getSearchHistory(Long userId) {
+    public List<ArticleDto> getRecommendedArticles(Long userId) {
+        // Use native query to fetch embedding as string to avoid Hibernate mapping issues
+        String embeddingStr = userRepository.findPreferenceEmbeddingAsString(userId);
+        
+        if (embeddingStr == null || embeddingStr.isBlank()) {
+            return new ArrayList<>();
+        }
+
+        // Fix time range to 7 days
+        LocalDateTime startDate = LocalDateTime.now().minusDays(7);
+
+        // embeddingStr from Postgres cast(vector as varchar) is like "[0.1,0.2,...]"
+        // We can pass this directly to the repository query
+        List<Article> articles = articleRepository.findByEmbeddingSimilarityWithFilters(
+                embeddingStr, 10, null, startDate, MAX_DISTANCE_THRESHOLD);
+
+        return articles.stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+
+    public List<SearchHistoryDto> getSearchHistory(Long userId) {
         return userSearchHistoryRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
-                .map(UserSearchHistory::getQuery)
-                .distinct()
-                .limit(10) // Limit to recent 10 unique queries
+                .map(history -> new SearchHistoryDto(history.getId(), history.getQuery()))
+                .limit(20)
                 .collect(Collectors.toList());
     }
 
     @Transactional
-    public void deleteSearchHistory(Long userId, String query) {
-        userSearchHistoryRepository.deleteByUserIdAndQuery(userId, query);
+    public void deleteSearchHistory(Long userId, Long historyId) {
+        UserSearchHistory history = userSearchHistoryRepository.findById(historyId)
+                .orElseThrow(() -> new IllegalArgumentException("History not found"));
+
+        if (!history.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("Unauthorized access to history");
+        }
+
+        userSearchHistoryRepository.delete(history);
     }
 
     @Transactional
-    public void updateSearchHistory(Long userId, String oldQuery, String newQuery) {
-        userSearchHistoryRepository.updateQueryByUserIdAndQuery(userId, oldQuery, newQuery);
+    public void updateSearchHistory(Long userId, Long historyId, String newQuery) {
+        UserSearchHistory history = userSearchHistoryRepository.findById(historyId)
+                .orElseThrow(() -> new IllegalArgumentException("History not found"));
+
+        if (!history.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("Unauthorized access to history");
+        }
+
+        history.updateQuery(newQuery);
     }
 }

@@ -20,13 +20,15 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
             "FROM articles " +
             "WHERE (:categoryId IS NULL OR category_id = :categoryId) " +
             "AND (cast(:startDate as timestamp) IS NULL OR published_at >= cast(:startDate as timestamp)) " +
+            "AND (embedding <=> cast(:embedding as vector)) < :threshold " +
             "ORDER BY embedding <=> cast(:embedding as vector) " +
             "LIMIT :limit", nativeQuery = true)
     List<Article> findByEmbeddingSimilarityWithFilters(
             @Param("embedding") String embedding,
             @Param("limit") int limit,
             @Param("categoryId") Long categoryId,
-            @Param("startDate") LocalDateTime startDate
+            @Param("startDate") LocalDateTime startDate,
+            @Param("threshold") double threshold
     );
 
 }

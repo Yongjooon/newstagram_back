@@ -1,6 +1,7 @@
 package com.ssafy.newstagram.api.auth.controller;
 
 import com.ssafy.newstagram.api.auth.jwt.JWTUtil;
+import com.ssafy.newstagram.api.auth.model.dto.LoginRequestDto;
 import com.ssafy.newstagram.api.auth.model.dto.LoginResponseDto;
 import com.ssafy.newstagram.api.auth.model.service.AuthService;
 import com.ssafy.newstagram.api.auth.model.service.RefreshTokenService;
@@ -20,10 +21,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.io.IOException;
 
 @RestController
 @RequestMapping("/auth")
@@ -35,6 +35,28 @@ public class AuthController {
     private final AuthService authService;
     private final RefreshTokenService refreshTokenService;
     private final JWTUtil jwtUtil;
+
+    @PostMapping("/login")
+    @Operation(
+            summary = "일반 로그인",
+            description = "이메일과 비밀번호로 로그인합니다.\n\n"
+                    + "- 이 API는 Swagger 문서화를 위한 가짜 엔드포인트입니다.\n"
+                    + "- 실제 로그인 처리는 Spring Security LoginFilter에서 수행됩니다."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "로그인 성공 (Access/Refresh 토큰 발급)"),
+            @ApiResponse(responseCode = "401", description = "아이디 또는 비밀번호 오류")
+    })
+    public void login(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "로그인 요청 정보",
+                    required = true
+            )
+            @RequestBody LoginRequestDto dto
+    ) {
+        throw new UnsupportedOperationException("Swagger 문서용 API입니다.");
+    }
+    
 
     @PostMapping("/refresh")
     @Operation(
