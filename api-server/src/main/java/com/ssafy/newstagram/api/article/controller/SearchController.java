@@ -1,6 +1,7 @@
 package com.ssafy.newstagram.api.article.controller;
 
 import com.ssafy.newstagram.api.article.dto.ArticleDto;
+import com.ssafy.newstagram.api.article.dto.SearchHistoryDto;
 import com.ssafy.newstagram.api.article.dto.SearchRequest;
 import com.ssafy.newstagram.api.article.dto.UpdateSearchHistoryRequest;
 import com.ssafy.newstagram.api.article.service.SearchService;
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@Tag(name = "Search", description = "Semantic Search API")
+@Tag(name = "Search", description = "시맨틱 검색 API")
 @RestController
 @RequestMapping("/v1/search")
 @RequiredArgsConstructor
@@ -22,7 +23,7 @@ public class SearchController {
 
     private final SearchService searchService;
 
-    @Operation(summary = "Semantic Search", description = "Search articles using Rule-based + LLM Hybrid approach.")
+    @Operation(summary = "시맨틱 검색", description = "형태소 분석 및 벡터 유사도 기반의 하이브리드 방식을 사용하여 기사를 검색합니다.")
     @PostMapping
     public ResponseEntity<List<ArticleDto>> searchArticles(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -41,7 +42,7 @@ public class SearchController {
         return ResponseEntity.ok(results);
     }
 
-    @Operation(summary = "Semantic Search (Test)", description = "Search articles using Rule-based + LLM Hybrid approach without user authentication.")
+    @Operation(summary = "시맨틱 검색 (테스트)", description = "사용자 인증 없이 형태소 분석 및 벡터 유사도 기반의 하이브리드 방식을 사용하여 기사를 검색합니다.")
     @PostMapping("/test")
     public ResponseEntity<List<ArticleDto>> searchArticlesTest(@RequestBody SearchRequest request) {
         
@@ -57,38 +58,46 @@ public class SearchController {
         return ResponseEntity.ok(results);
     }
 
-    @Operation(summary = "Get Search History", description = "Get recent search queries for the user.")
+    @Operation(summary = "검색 기록 조회", description = "사용자의 최근 검색 기록을 조회합니다.")
     @GetMapping("/history")
-    public ResponseEntity<List<String>> getSearchHistory(@AuthenticationPrincipal CustomUserDetails userDetails) {
+    public ResponseEntity<List<SearchHistoryDto>> getSearchHistory(@AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userId = userDetails.getUserId();
-        List<String> history = searchService.getSearchHistory(userId);
+        List<SearchHistoryDto> history = searchService.getSearchHistory(userId);
         return ResponseEntity.ok(history);
     }
 
-    @Operation(summary = "Delete Search History", description = "Delete a specific search query from history.")
+    @Operation(summary = "검색 기록 삭제", description = "특정 검색 기록을 삭제합니다.")
     @DeleteMapping("/history")
     public ResponseEntity<Void> deleteSearchHistory(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestParam String query) {
+            @RequestParam Long historyId) {
         Long userId = userDetails.getUserId();
-        searchService.deleteSearchHistory(userId, query);
+        searchService.deleteSearchHistory(userId, historyId);
         return ResponseEntity.ok().build();
     }
 
-    @Operation(summary = "Update Search History", description = "Rename a specific search query in history.")
+    @Operation(summary = "검색 기록 수정", description = "특정 검색 기록의 검색어를 수정합니다.")
     @PutMapping("/history")
     public ResponseEntity<Void> updateSearchHistory(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody UpdateSearchHistoryRequest request) {
         Long userId = userDetails.getUserId();
-        String oldQuery = request.getOldQuery();
+        Long historyId = request.getHistoryId();
         String newQuery = request.getNewQuery();
         
-        if (oldQuery == null || newQuery == null) {
+        if (historyId == null || newQuery == null) {
             return ResponseEntity.badRequest().build();
         }
 
-        searchService.updateSearchHistory(userId, oldQuery, newQuery);
+        searchService.updateSearchHistory(userId, historyId, newQuery);
         return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "추천 기사 조회", description = "사용자 선호도를 기반으로 추천 기사를 조회합니다.")
+    @GetMapping("/preference")
+    public ResponseEntity<List<ArticleDto>> getRecommendedArticles(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long userId = userDetails.getUserId();
+        List<ArticleDto> results = searchService.getRecommendedArticles(userId);
+        return ResponseEntity.ok(results);
     }
 }
