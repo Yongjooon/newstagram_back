@@ -23,4 +23,14 @@ public class WeeklyPeriodCalculator implements PeriodCalculator {
 
         return thisWeekMonday.atStartOfDay();
     }
+
+    @Override
+    public LocalDateTime getBeforeStart() {
+        return getStart().minusWeeks(1);
+    }
+
+    @Override
+    public LocalDateTime getBeforeEnd() {
+        return getEnd().minusWeeks(1);
+    }
 }

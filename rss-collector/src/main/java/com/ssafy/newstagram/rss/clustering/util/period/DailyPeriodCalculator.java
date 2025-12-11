@@ -16,4 +16,14 @@ public class DailyPeriodCalculator implements PeriodCalculator {
         LocalDate today = LocalDate.now();
         return today.atStartOfDay();
     }
+
+    @Override
+    public LocalDateTime getBeforeStart() {
+        return getStart().minusDays(1);
+    }
+
+    @Override
+    public LocalDateTime getBeforeEnd() {
+        return getEnd().minusDays(1);
+    }
 }
