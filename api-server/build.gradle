@@ -40,6 +40,9 @@ dependencies {
 
     // Lombok
     implementation 'org.projectlombok:lombok:1.18.42'
+
+    // MyBatis
+    implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
 }
 
 bootJar {
