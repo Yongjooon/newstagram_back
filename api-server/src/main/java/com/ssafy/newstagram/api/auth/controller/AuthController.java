@@ -38,7 +38,6 @@ public class AuthController {
     private final UserService userService;
     private final AuthService authService;
     private final RefreshTokenService refreshTokenService;
-    private final AuthService authService;
     private final JWTUtil jwtUtil;
 
     @PostMapping("/login")
@@ -85,8 +84,6 @@ public class AuthController {
             @Parameter(hidden = true)
             HttpServletResponse response
     ) {
-//        authService.refresh(dto);
-
         String refreshToken = dto.getRefreshToken();
 
         Long userId = jwtUtil.getUserId(refreshToken);
@@ -147,24 +144,68 @@ public class AuthController {
     }
 
     @PostMapping("/password/reset-request")
-    public ResponseEntity<?> passwordResetRequest(@RequestBody PasswordResetRequestRequestDto dto){
+    @Operation(
+            summary = "비밀번호 재설정 요청",
+            description =
+                    "이메일을 입력받아 비밀번호 재설정 링크를 발송합니다.\n\n"
+                            + "- 입력한 이메일이 존재하지 않더라도 동일한 응답을 반환합니다. (보안 목적)\n"
+                            + "- 비밀번호 재설정 토큰은 Redis에 저장되며 일정 시간(1시간) 후 만료됩니다.\n"
+                            + "- 사용자는 이메일로 전달받은 링크를 통해 비밀번호를 재설정할 수 있습니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "비밀번호 재설정 요청 성공 (이메일 발송 처리 완료)"
+            )
+    })
+    public ResponseEntity<?> passwordResetRequest(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "비밀번호 재설정 요청을 요청하는 정보",
+                    required = true
+            )
+            @RequestBody PasswordResetRequestRequestDto dto
+    ) {
         authService.requestPasswordReset(dto);
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.success(
                         "AUTH_200",
-                        "비밀번호 초기화 요청 성공",
+                        "비밀번호 재설정 요청 성공",
                         Map.of("email", dto.getEmail())
                 )
         );
     }
 
     @PostMapping("/password/reset")
-    public ResponseEntity<?> passwordReset(@RequestBody PasswordResetRequestDto dto){
+    @Operation(
+            summary = "비밀번호 재설정",
+            description =
+                    "비밀번호 재설정 토큰을 검증한 뒤 새로운 비밀번호로 변경합니다.\n\n"
+                            + "- 이메일로 전달된 토큰을 사용합니다.\n"
+                            + "- 토큰이 유효하지 않거나 만료된 경우 실패합니다.\n"
+                            + "- 비밀번호 변경이 완료되면 해당 토큰은 즉시 폐기됩니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "비밀번호 재설정 성공"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "유효하지 않거나 만료된 토큰"
+            )
+    })
+    public ResponseEntity<?> passwordReset(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "비밀번호 재설정 요청 정보",
+                    required = true
+            )
+            @RequestBody PasswordResetRequestDto dto
+    ) {
         authService.passwordReset(dto);
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.successNoData(
                         "AUTH_200",
-                        "비밀번호 초기화 성공"
+                        "비밀번호 재설정 성공"
                 )
         );
     }
