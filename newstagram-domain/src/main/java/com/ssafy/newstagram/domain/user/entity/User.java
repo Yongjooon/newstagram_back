@@ -57,4 +57,8 @@ public class User {
     public void updateNickname(String nickname) {
         this.nickname = nickname;
     }
+
+    public void updatePasswordHash(String passwordHash){
+        this.passwordHash = passwordHash;
+    }
 }

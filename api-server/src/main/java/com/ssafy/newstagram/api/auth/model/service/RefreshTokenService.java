@@ -1,34 +1,26 @@
 package com.ssafy.newstagram.api.auth.model.service;
 
+import com.ssafy.newstagram.api.auth.jwt.RefreshTokenUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-
-import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
 public class RefreshTokenService {
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final RefreshTokenUtil refreshTokenUtil;
 
     @Value("${jwt.refresh-expiration}")
-    private long refreshExpirationMs;
+    private long REFRESH_TOKEN_TTL;
 
-    public void saveRefreshToken(String email, String refreshToken) {
-        redisTemplate.opsForValue().set(
-                "RT:" + email,
-                refreshToken,
-                refreshExpirationMs,
-                TimeUnit.MILLISECONDS
-        );
+    public void save(Long userId, String refreshToken){
+        refreshTokenUtil.save(userId, refreshToken, REFRESH_TOKEN_TTL);
+    }
+    public String getRefreshToken(Long userId){
+        return refreshTokenUtil.getRefreshToken(userId);
     }
 
-    public String getRefreshToken(String email) {
-        return (String) redisTemplate.opsForValue().get("RT:" + email);
-    }
-
-    public void deleteRefreshToken(String email) {
-        redisTemplate.delete("RT:" + email);
+    public void delete(Long userId){
+        refreshTokenUtil.delete(userId);
     }
 }

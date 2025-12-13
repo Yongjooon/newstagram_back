@@ -38,11 +38,11 @@ public class JWTFilter extends OncePerRequestFilter {
                 return;
             }
 
-            String email = jwtUtil.getEmail(token);
+            Long userId = jwtUtil.getUserId(token);
             String role = jwtUtil.getRole(token);
 
             User user = User.builder()
-                    .email(email)
+                    .id(userId)
                     .passwordHash("temppassword1234")
                     .role(role)
                     .build();

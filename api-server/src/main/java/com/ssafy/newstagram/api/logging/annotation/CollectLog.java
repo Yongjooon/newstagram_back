@@ -1,4 +1,4 @@
-package com.ssafy.newstagram.api.annotation;
+package com.ssafy.newstagram.api.logging.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

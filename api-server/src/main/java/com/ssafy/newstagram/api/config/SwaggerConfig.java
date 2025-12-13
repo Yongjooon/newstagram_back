@@ -25,7 +25,7 @@ public class SwaggerConfig {
     @Bean
     GroupedOpenApi userOpenApi(){
         String[] paths = {"/users/**", "/auth/**"};
-        return GroupedOpenApi.builder().group("User 관련 API")
+        return GroupedOpenApi.builder().group("User & Auth 관련 API")
                                         .pathsToMatch(paths)
                                         .build();
     }
@@ -34,6 +34,15 @@ public class SwaggerConfig {
     GroupedOpenApi articleOpenApi(){
         String[] paths = {"/article/**", "/v1/search/**"};
         return GroupedOpenApi.builder().group("Article 관련 API")
+                .pathsToMatch(paths)
+                .build();
+    }
+
+    @Bean
+    GroupedOpenApi loggingOpenApi(){
+        String[] paths = {"/kafka/logging/**"};
+        return GroupedOpenApi.builder()
+                .group("Kafka Test API (개발용)")
                 .pathsToMatch(paths)
                 .build();
     }

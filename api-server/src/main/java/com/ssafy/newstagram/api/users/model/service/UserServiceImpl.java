@@ -1,13 +1,12 @@
 package com.ssafy.newstagram.api.users.model.service;
 
-
-import com.ssafy.newstagram.api.auth.model.dto.LoginRequestDto;
-import com.ssafy.newstagram.api.auth.model.dto.LoginResponseDto;
 import com.ssafy.newstagram.api.users.model.dto.RegisterRequestDto;
 import com.ssafy.newstagram.api.users.model.dto.UpdateNicknameRequestDto;
+import com.ssafy.newstagram.api.users.model.dto.UpdatePasswordRequestDto;
 import com.ssafy.newstagram.api.users.model.dto.UserInfoDto;
 import com.ssafy.newstagram.api.users.repository.UserRepository;
 import com.ssafy.newstagram.domain.user.entity.User;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -41,23 +40,18 @@ public class UserServiceImpl implements  UserService{
     }
 
     @Override
-    public void deleteUserByEmail(String email) {
-        User user = userRepository.findByEmail(email);
-
-        if(user == null){
-            throw new IllegalArgumentException("회원을 찾을 수 없습니다.");
-        }
-
+    public void deleteUserById(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(
+            () -> new IllegalArgumentException("회원을 찾을 수 없습니다.")
+        );
         userRepository.delete(user); // soft delete
     }
 
     @Override
-    public UserInfoDto getUserInfoByEmail(String email) {
-        User user = userRepository.findByEmail(email);
-
-        if(user == null){
-            throw new IllegalArgumentException("회원을 찾을 수 없습니다.");
-        }
+    public UserInfoDto getUserInfoByUserId(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(
+                () -> new IllegalArgumentException("회원을 찾을 수 없습니다.")
+        );
 
         return UserInfoDto.builder()
             .email(user.getEmail())
@@ -68,26 +62,36 @@ public class UserServiceImpl implements  UserService{
     }
 
     @Override
-    public void updateNickname(String email, UpdateNicknameRequestDto dto) {
-        User user = userRepository.findByEmail(email);
-
-        if(user == null){
-            throw new IllegalArgumentException("회원을 찾을 수 없습니다.");
-        }
+    public void updateNickname(Long userId, UpdateNicknameRequestDto dto) {
+        User user = userRepository.findById(userId).orElseThrow(
+                () -> new IllegalArgumentException("회원을 찾을 수 없습니다.")
+        );
 
         user.updateNickname(dto.getNewNickname());
         userRepository.save(user);
     }
 
     @Override
-    public User getUserByEmail(String email) {
-        User user = userRepository.findByEmail(email);
+    public User getUserById(Long userId) {
+        return userRepository.findById(userId).orElseThrow(
+            () -> new IllegalArgumentException("회원을 찾을 수 없습니다.")
+        );
+    }
 
-        if(user == null){
-            throw new IllegalArgumentException("회원을 찾을 수 없습니다.");
+    @Transactional
+    @Override
+    public void updatePassword(Long userId, UpdatePasswordRequestDto dto) {
+        User user = userRepository.findById(userId).orElseThrow(
+                () -> new IllegalArgumentException("회원을 찾을 수 없습니다.")
+        );
+
+        if(!passwordEncoder.matches(dto.getCurrentPassword(), user.getPasswordHash())){
+            throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
         }
 
-        return user;
+        String newEncoded = passwordEncoder.encode(dto.getNewPassword());
+
+        user.updatePasswordHash(newEncoded);
     }
 
 }

@@ -80,18 +80,24 @@ jobs:
             # AWS ECR 로그인
             aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
 
-            # 기존 컨테이너 중지 및 삭제
+            # 1. 현재 실행 중인 컨테이너 이미지 ID 저장 (롤백용)
+            CURRENT_IMAGE_ID=$(docker inspect --format='{{.Image}}' rss-collector 2>/dev/null || true)
+            echo "Current Image ID: $CURRENT_IMAGE_ID"
+
+            # 2. 새 이미지 Pull
+            docker pull ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_RSS }}:latest
+
+            # 3. 기존 컨테이너 중지 및 삭제
             docker stop rss-collector || true
             docker rm rss-collector || true
-
-            # 이미지 Pull
-            docker pull ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_RSS }}:latest
 
             # 로그 디렉토리 생성
             mkdir -p /home/ec2-user/logs/rss-collector
 
-            # 컨테이너 실행 (Prod 프로필 및 환경변수 주입)
+            # 4. 새 컨테이너 실행
+            echo "Starting new container..."
             docker run -d --name rss-collector \
+              -e TZ=Asia/Seoul \
               -p 8082:8082 \
               -v /home/ec2-user/logs/rss-collector:/var/log/newstagram \
               -e LOGGING_FILE_NAME=/var/log/newstagram/application.log \
@@ -106,8 +112,44 @@ jobs:
               -e KAFKA_API_SECRET="${{ secrets.KAFKA_API_SECRET }}" \
               -e GMS_SECRET="${{ secrets.GMS_SECRET }}" \
               -e GMS_BASE_URL="${{ secrets.GMS_BASE_URL }}" \
-              -e GMS_LLM_URL="${{ secrets.GMS_LLM_URL }}" \
               ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_RSS }}:latest
+
+            # 5. 헬스 체크 및 롤백
+            echo "Health checking..."
+            sleep 15
+            if [ -z "$(docker ps -q -f name=rss-collector)" ]; then
+              echo "Deployment failed! Container is not running."
+              docker logs rss-collector
+              
+              echo "Rolling back to previous version..."
+              docker rm rss-collector || true
+              
+              if [ -n "$CURRENT_IMAGE_ID" ]; then
+                docker run -d --name rss-collector \
+                  -e TZ=Asia/Seoul \
+                  -p 8082:8082 \
+                  -v /home/ec2-user/logs/rss-collector:/var/log/newstagram \
+                  -e LOGGING_FILE_NAME=/var/log/newstagram/application.log \
+                  -e SPRING_PROFILES_ACTIVE=prod \
+                  -e RDS_ENDPOINT="${{ secrets.RDS_ENDPOINT }}" \
+                  -e RDS_USERNAME="${{ secrets.RDS_USERNAME }}" \
+                  -e RDS_PASSWORD="${{ secrets.RDS_PASSWORD }}" \
+                  -e REDIS_HOST="${{ secrets.REDIS_HOST }}" \
+                  -e REDIS_PORT="${{ secrets.REDIS_PORT }}" \
+                  -e KAFKA_BOOTSTRAP_SERVERS="${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}" \
+                  -e KAFKA_API_KEY="${{ secrets.KAFKA_API_KEY }}" \
+                  -e KAFKA_API_SECRET="${{ secrets.KAFKA_API_SECRET }}" \
+                  -e GMS_SECRET="${{ secrets.GMS_SECRET }}" \
+                  -e GMS_BASE_URL="${{ secrets.GMS_BASE_URL }}" \
+                  $CURRENT_IMAGE_ID
+                echo "Rollback successful."
+              else
+                echo "No previous image found. Cannot rollback."
+              fi
+              exit 1
+            else
+              echo "Deployment successful."
+            fi
 
   # 3. CD: API Server 배포
   deploy-api-server:
@@ -151,14 +193,25 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
+
+            # 1. 현재 실행 중인 컨테이너 이미지 ID 저장 (롤백용)
+            CURRENT_IMAGE_ID=$(docker inspect --format='{{.Image}}' api-server 2>/dev/null || true)
+            echo "Current Image ID: $CURRENT_IMAGE_ID"
+
+            # 2. 새 이미지 Pull
+            docker pull ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_API }}:latest
+
+            # 3. 기존 컨테이너 중지 및 삭제
             docker stop api-server || true
             docker rm api-server || true
-            docker pull ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_API }}:latest
 
             # 로그 디렉토리 생성
             mkdir -p /home/ec2-user/logs/api-server
 
+            # 4. 새 컨테이너 실행
+            echo "Starting new container..."
             docker run -d --name api-server \
+              -e TZ=Asia/Seoul \
               -p 8080:8080 \
               -v /home/ec2-user/logs/api-server:/var/log/newstagram \
               -e LOGGING_FILE_NAME=/var/log/newstagram/application.log \
@@ -174,11 +227,51 @@ jobs:
               -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
               -e GMS_SECRET="${{ secrets.GMS_SECRET }}" \
               -e GMS_BASE_URL="${{ secrets.GMS_BASE_URL }}" \
-              -e GMS_LLM_URL="${{ secrets.GMS_LLM_URL }}" \
               -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
               -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
               -e GOOGLE_REDIRECT_URI="${{ secrets.GOOGLE_REDIRECT_URI }}" \
               ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_API }}:latest
+
+            # 5. 헬스 체크 및 롤백
+            echo "Health checking..."
+            sleep 15
+            if [ -z "$(docker ps -q -f name=api-server)" ]; then
+              echo "Deployment failed! Container is not running."
+              docker logs api-server
+              
+              echo "Rolling back to previous version..."
+              docker rm api-server || true
+              
+              if [ -n "$CURRENT_IMAGE_ID" ]; then
+                docker run -d --name api-server \
+                  -e TZ=Asia/Seoul \
+                  -p 8080:8080 \
+                  -v /home/ec2-user/logs/api-server:/var/log/newstagram \
+                  -e LOGGING_FILE_NAME=/var/log/newstagram/application.log \
+                  -e SPRING_PROFILES_ACTIVE=prod \
+                  -e RDS_ENDPOINT="${{ secrets.RDS_ENDPOINT }}" \
+                  -e RDS_USERNAME="${{ secrets.RDS_USERNAME }}" \
+                  -e RDS_PASSWORD="${{ secrets.RDS_PASSWORD }}" \
+                  -e REDIS_HOST="${{ secrets.REDIS_HOST }}" \
+                  -e REDIS_PORT="${{ secrets.REDIS_PORT }}" \
+                  -e KAFKA_BOOTSTRAP_SERVERS="${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}" \
+                  -e KAFKA_API_KEY="${{ secrets.KAFKA_API_KEY }}" \
+                  -e KAFKA_API_SECRET="${{ secrets.KAFKA_API_SECRET }}" \
+                  -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+                  -e GMS_SECRET="${{ secrets.GMS_SECRET }}" \
+                  -e GMS_BASE_URL="${{ secrets.GMS_BASE_URL }}" \
+                  -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
+                  -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+                  -e GOOGLE_REDIRECT_URI="${{ secrets.GOOGLE_REDIRECT_URI }}" \
+                  $CURRENT_IMAGE_ID
+                echo "Rollback successful."
+              else
+                echo "No previous image found. Cannot rollback."
+              fi
+              exit 1
+            else
+              echo "Deployment successful."
+            fi
 
   # 4. CD: Logging Server 배포
   deploy-logging-server:
@@ -222,14 +315,25 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
+
+            # 1. 현재 실행 중인 컨테이너 이미지 ID 저장 (롤백용)
+            CURRENT_IMAGE_ID=$(docker inspect --format='{{.Image}}' logging-server 2>/dev/null || true)
+            echo "Current Image ID: $CURRENT_IMAGE_ID"
+
+            # 2. 새 이미지 Pull
+            docker pull ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_LOG }}:latest
+
+            # 3. 기존 컨테이너 중지 및 삭제
             docker stop logging-server || true
             docker rm logging-server || true
-            docker pull ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_LOG }}:latest
 
             # 로그 디렉토리 생성
             mkdir -p /home/ec2-user/logs/logging-server
 
+            # 4. 새 컨테이너 실행
+            echo "Starting new container..."
             docker run -d --name logging-server \
+              -e TZ=Asia/Seoul \
               -p 8081:8081 \
               -v /home/ec2-user/logs/logging-server:/var/log/newstagram \
               -e LOGGING_FILE_NAME=/var/log/newstagram/application.log \
@@ -244,5 +348,41 @@ jobs:
               -e KAFKA_API_SECRET="${{ secrets.KAFKA_API_SECRET }}" \
               -e GMS_SECRET="${{ secrets.GMS_SECRET }}" \
               -e GMS_BASE_URL="${{ secrets.GMS_BASE_URL }}" \
-              -e GMS_LLM_URL="${{ secrets.GMS_LLM_URL }}" \
               ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_LOG }}:latest
+
+            # 5. 헬스 체크 및 롤백
+            echo "Health checking..."
+            sleep 15
+            if [ -z "$(docker ps -q -f name=logging-server)" ]; then
+              echo "Deployment failed! Container is not running."
+              docker logs logging-server
+              
+              echo "Rolling back to previous version..."
+              docker rm logging-server || true
+              
+              if [ -n "$CURRENT_IMAGE_ID" ]; then
+                docker run -d --name logging-server \
+                  -e TZ=Asia/Seoul \
+                  -p 8081:8081 \
+                  -v /home/ec2-user/logs/logging-server:/var/log/newstagram \
+                  -e LOGGING_FILE_NAME=/var/log/newstagram/application.log \
+                  -e SPRING_PROFILES_ACTIVE=prod \
+                  -e RDS_ENDPOINT="${{ secrets.RDS_ENDPOINT }}" \
+                  -e RDS_USERNAME="${{ secrets.RDS_USERNAME }}" \
+                  -e RDS_PASSWORD="${{ secrets.RDS_PASSWORD }}" \
+                  -e REDIS_HOST="${{ secrets.REDIS_HOST }}" \
+                  -e REDIS_PORT="${{ secrets.REDIS_PORT }}" \
+                  -e KAFKA_BOOTSTRAP_SERVERS="${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}" \
+                  -e KAFKA_API_KEY="${{ secrets.KAFKA_API_KEY }}" \
+                  -e KAFKA_API_SECRET="${{ secrets.KAFKA_API_SECRET }}" \
+                  -e GMS_SECRET="${{ secrets.GMS_SECRET }}" \
+                  -e GMS_BASE_URL="${{ secrets.GMS_BASE_URL }}" \
+                  $CURRENT_IMAGE_ID
+                echo "Rollback successful."
+              else
+                echo "No previous image found. Cannot rollback."
+              fi
+              exit 1
+            else
+              echo "Deployment successful."
+            fi

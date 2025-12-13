@@ -21,4 +21,7 @@ public class IntentAnalysisResponse implements Serializable {
 
     @JsonProperty("date_range")
     private int dateRange;
+
+    @JsonProperty("keywords")
+    private java.util.List<String> keywords;
 }

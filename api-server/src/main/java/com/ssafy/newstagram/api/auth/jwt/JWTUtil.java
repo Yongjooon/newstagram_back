@@ -1,5 +1,6 @@
 package com.ssafy.newstagram.api.auth.jwt;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -11,53 +12,68 @@ import java.util.Date;
 
 @Component
 public class JWTUtil {
-    private final SecretKey secretKey;
-    private final long expiredMs;
-    private final long refreshExpireMs;
+    private final SecretKey SECRET_KEY;
+    private final long ACCESS_TOKEN_TTL;
+    private final long REFRESH_TOKEN_TTL;
 
     public JWTUtil(
             @Value("${jwt.secret}") String secret,
             @Value("${jwt.expiration}") long expiration,
             @Value("${jwt.refresh-expiration}") long refreshExpiration
     ) {
-        this.secretKey = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), Jwts.SIG.HS256.key().build().getAlgorithm());
-        this.expiredMs = expiration;
-        this.refreshExpireMs = refreshExpiration;
+        this.SECRET_KEY = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), Jwts.SIG.HS256.key().build().getAlgorithm());
+        this.ACCESS_TOKEN_TTL = expiration;
+        this.REFRESH_TOKEN_TTL = refreshExpiration;
     }
 
-    public String getEmail(String token) {
-        return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().get("email", String.class);
+    public Long getUserId(String token) {
+        return Long.parseLong(parseToken(token).getSubject());
     }
 
     public String getRole(String token) {
-        return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().get("role", String.class);
+        return parseToken(token).get("role", String.class);
     }
 
     public String getType(String token){
-        return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().get("type", String.class);
+        return parseToken(token).get("type", String.class);
     }
 
     public Boolean isExpired(String token) {
-        return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().getExpiration().before(new Date());
+        return parseToken(token).getExpiration().before(new Date(System.currentTimeMillis()));
     }
 
-    public String createAccessToken(String email, String role) {
+    public String createAccessToken(Long userId, String role) {
+        Date issuedDate = new Date(System.currentTimeMillis());
+        Date expiryDate = new Date(issuedDate.getTime() + ACCESS_TOKEN_TTL);
+
         return Jwts.builder()
-                .claim("email", email)
+                .subject(String.valueOf(userId))
                 .claim("role", role)
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + expiredMs))
-                .signWith(secretKey)
+                .issuedAt(issuedDate)
+                .expiration(expiryDate)
+                .signWith(SECRET_KEY)
                 .compact();
     }
 
-    public String createRefreshToken(String email){
+    public String createRefreshToken(Long userId){
+        Date issuedDate = new Date(System.currentTimeMillis());
+        Date expiryDate = new Date(issuedDate.getTime() + REFRESH_TOKEN_TTL);
+
         return Jwts.builder()
-                .claim("email", email)
+                .subject(String.valueOf(userId))
                 .claim("type", "refresh")
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + refreshExpireMs))
-                .signWith(secretKey)
+                .issuedAt(issuedDate)
+                .expiration(expiryDate)
+                .signWith(SECRET_KEY)
                 .compact();
+    }
+
+    private Claims parseToken(String token){
+        return Jwts.parser()
+                .verifyWith(SECRET_KEY)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
     }
 }
