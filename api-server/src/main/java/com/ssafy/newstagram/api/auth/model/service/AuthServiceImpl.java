@@ -37,7 +37,7 @@ public class AuthServiceImpl implements AuthService{
     public void requestPasswordReset(PasswordResetRequestRequestDto dto) {
         String email = dto.getEmail();
 
-        User user = userRepository.findByEmail(email);
+        User user = userRepository.findByEmail(email).orElse(null);
         if(user == null){
             return;
         }
