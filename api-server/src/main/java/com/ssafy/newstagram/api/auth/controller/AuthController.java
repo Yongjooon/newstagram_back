@@ -33,7 +33,7 @@ public class AuthController {
 
     private final UserService userService;
     private final RefreshTokenService refreshTokenService;
-//    private final AuthService authService;
+    private final AuthService authService;
     private final JWTUtil jwtUtil;
 
     @PostMapping("/refresh")
@@ -101,7 +101,7 @@ public class AuthController {
 
     @PostMapping("/password/reset-request")
     public ResponseEntity<?> passwordResetRequest(@RequestBody PasswordResetRequestRequestDto dto){
-//        authService.requestPasswordReset(dto);
+        authService.requestPasswordReset(dto);
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.success(
                         "AUTH_200",
