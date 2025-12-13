@@ -113,7 +113,7 @@ public class AuthController {
 
     @PostMapping("/password/reset")
     public ResponseEntity<?> passwordReset(@RequestBody PasswordResetRequestDto dto){
-//        authService.passwordReset(dto);
+        authService.passwordReset(dto);
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.successNoData(
                         "AUTH_200",

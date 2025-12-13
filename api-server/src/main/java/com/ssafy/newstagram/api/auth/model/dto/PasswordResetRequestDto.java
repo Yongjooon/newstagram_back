@@ -8,6 +8,9 @@ import lombok.Getter;
 @Getter
 public class PasswordResetRequestDto {
     @NotBlank
+    private String token;
+
+    @NotBlank
     @Size(min = 8, message = "비밀번호는 최소 8자리여야 합니다.")
     @ValidPassword
     private String newPassword;

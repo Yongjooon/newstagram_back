@@ -5,5 +5,5 @@ import com.ssafy.newstagram.api.auth.model.dto.PasswordResetRequestRequestDto;
 
 public interface AuthService {
     void requestPasswordReset(PasswordResetRequestRequestDto dto);
-//    void passwordReset(PasswordResetRequestDto dto);
+    void passwordReset(PasswordResetRequestDto dto);
 }
