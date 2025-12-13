@@ -58,8 +58,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         System.out.println("login success");
 
         CustomUserDetails customUserDetails = (CustomUserDetails) authResult.getPrincipal();
-
-        String email = customUserDetails.getUsername();
+        Long userId = customUserDetails.getUserId();
 
         Collection<? extends GrantedAuthority> authorities = authResult.getAuthorities();
         Iterator<? extends GrantedAuthority> iterator = authorities.iterator();
@@ -67,10 +66,10 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
         String role = auth.getAuthority();
 
-        String accessToken = jwtUtil.createAccessToken(email, role);
-        String refreshToken = jwtUtil.createRefreshToken(email);
+        String accessToken = jwtUtil.createAccessToken(userId, role);
+        String refreshToken = jwtUtil.createRefreshToken(userId);
 
-        refreshTokenService.saveRefreshToken(email, refreshToken);
+        refreshTokenService.save(userId, refreshToken);
 
         BaseResponse<LoginResponseDto> res = BaseResponse.success(
                 "AUTH_200",

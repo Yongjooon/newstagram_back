@@ -1,4 +1,4 @@
-package com.ssafy.newstagram.api.article.util.period;
+package com.ssafy.newstagram.domain.util.period;
 
 // Period.DAILY
 public enum Period {

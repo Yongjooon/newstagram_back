@@ -44,4 +44,56 @@
             updated_at = NOW()
         WHERE id = #{id}
     </update>
+
+
+    <!-- embedding literal 조회 -->
+    <select id="findEmbeddingLiteralById" resultType="string">
+        SELECT embedding::text
+        FROM articles
+        WHERE id = #{id}
+    </select>
+
+    <!-- 모든 기사 + embedding literal 조회 -->
+    <select id="findAllWithEmbeddingLiteral" resultType="com.ssafy.newstagram.rss.vo.Article">
+        SELECT
+        id,
+        title,
+        content,
+        description,
+        url,
+        thumbnail_url AS thumbnailUrl,
+        author,
+        published_at AS publishedAt,
+        created_at AS createdAt,
+        updated_at AS updatedAt,
+        feed_id AS feedId,
+        category_id AS categoryId,
+        sources_id AS sourcesId
+        FROM articles
+        WHERE embedding IS NOT NULL
+        ORDER BY id ASC
+    </select>
+
+    <!-- 시작 시간, 끝 시간으로 기사 조회 -->
+    <select id="findArticlesByPeriod" resultType="com.ssafy.newstagram.rss.vo.Article">
+        SELECT
+        id,
+        title,
+        content,
+        description,
+        url,
+        thumbnail_url AS thumbnailUrl,
+        author,
+        published_at AS publishedAt,
+        created_at AS createdAt,
+        updated_at AS updatedAt,
+        feed_id AS feedId,
+        category_id AS categoryId,
+        sources_id AS sourcesId
+        from articles
+        WHERE published_at BETWEEN #{startPeriod}
+        AND #{endPeriod}
+        AND embedding IS NOT NULL
+        ORDER BY id ASC;
+    </select>
 </mapper>

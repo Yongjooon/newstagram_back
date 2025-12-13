@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.newstagram.api.article.dto.ArticleDto;
 import com.ssafy.newstagram.api.article.dto.EmbeddingResponse;
 import com.ssafy.newstagram.api.article.dto.IntentAnalysisResponse;
+import com.ssafy.newstagram.api.article.dto.SearchHistoryDto;
 import com.ssafy.newstagram.api.article.repository.ArticleRepository;
 import com.ssafy.newstagram.api.article.repository.NewsCategoryRepository;
 import com.ssafy.newstagram.api.users.repository.UserRepository;
@@ -12,9 +13,12 @@ import com.ssafy.newstagram.domain.news.entity.Article;
 import com.ssafy.newstagram.domain.news.entity.NewsCategory;
 import com.ssafy.newstagram.domain.user.entity.User;
 import com.ssafy.newstagram.domain.user.entity.UserSearchHistory;
+import kr.co.shineware.nlp.komoran.constant.DEFAULT_MODEL;
+import kr.co.shineware.nlp.komoran.core.Komoran;
+import kr.co.shineware.nlp.komoran.model.KomoranResult;
+import kr.co.shineware.nlp.komoran.model.Token;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpEntity;
@@ -22,18 +26,14 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -46,19 +46,18 @@ public class SearchService {
     private final UserSearchHistoryRepository userSearchHistoryRepository;
     private final UserRepository userRepository;
     private final NewsCategoryRepository newsCategoryRepository;
-    private final ObjectProvider<SearchService> searchServiceProvider;
     
     @Value("${gms.api.base-url}")
     private String gmsApiBaseUrl;
     @Value("${gms.api.key}")
     private String gmsApiKey;
-    @Value("${gms.api.llm-url}")
-    private String gmsLlmUrl;
     
     private static final String MODEL_NAME = "text-embedding-3-small";
-    private static final String LLM_MODEL_NAME = "gpt-5-nano";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final int TIMEOUT_MS = 15000;
+    private static final Komoran komoran = new Komoran(DEFAULT_MODEL.FULL);
+    private static final double INITIAL_DISTANCE_THRESHOLD = 0.30;
+    private static final double MAX_DISTANCE_THRESHOLD = 0.80;
+    private static final double STEP_DISTANCE_THRESHOLD = 0.05;
 
     @Transactional
     public List<ArticleDto> searchArticles(Long userId, String query, int limit) {
@@ -71,15 +70,28 @@ public class SearchService {
 
     @Cacheable(value = "search_results", key = "#query")
     public List<ArticleDto> getCachedSearchResults(String query, int limit) {
-        IntentAnalysisResponse intent = searchServiceProvider.getObject().analyzeIntent(query);
+        log.info("[Search] Original Query: {}", query);
+
+        // 1. Try Local Analysis (Rule-based)
+        IntentAnalysisResponse intent = analyzeIntentLocal(query);
+
+        if (intent == null) {
+            intent = new IntentAnalysisResponse(query, null, 7, new ArrayList<>()); // Default 7 days if analysis fails
+            log.info("[Search] Local Analysis Failed or Skipped. Using raw query with default 7 days.");
+        } else {
+            // Default to 7 days if no date specified
+            if (intent.getDateRange() == 0) {
+                intent.setDateRange(7);
+            }
+            log.info("[Search] Local Analysis Result: Query={}, Category={}, DateRange={}", 
+                    intent.getQuery(), intent.getCategory(), intent.getDateRange());
+        }
 
         String searchKeywords = (intent.getQuery() != null && !intent.getQuery().isBlank()) 
                 ? intent.getQuery() 
                 : query;
         
         List<Double> embedding = callEmbeddingApi(searchKeywords);
-        
-        // Convert List<Double> to String format "[0.1,0.2,...]" for pgvector
         String embeddingString = toPgVectorLiteral(embedding); 
 
         Long categoryId = null;
@@ -94,126 +106,237 @@ public class SearchService {
             startDate = LocalDateTime.now().minusDays(intent.getDateRange());
         }
 
-        List<Article> articles = articleRepository.findByEmbeddingSimilarityWithFilters(
-                embeddingString, limit, categoryId, startDate);
+        // Optimization: Single DB Query with MAX threshold and large limit
+        // Instead of looping DB queries, fetch a larger candidate pool once.
+        // Since results are ordered by distance, the top results are the best matches.
+        int fetchLimit = limit * 10; // Fetch plenty of candidates to handle filtering
+        
+        log.info("[Search] Searching once with threshold: {}, fetchLimit: {}", MAX_DISTANCE_THRESHOLD, fetchLimit);
+        
+        List<Article> candidates = articleRepository.findByEmbeddingSimilarityWithFilters(
+                embeddingString, fetchLimit, categoryId, startDate, MAX_DISTANCE_THRESHOLD);
+
+        List<Article> articles = new ArrayList<>();
+
+        // Filter candidates based on keywords
+        if (intent.getKeywords() != null && !intent.getKeywords().isEmpty()) {
+            List<String> requiredKeywords = intent.getKeywords();
+            for (Article candidate : candidates) {
+                if (articles.size() >= limit) break;
+                
+                String title = candidate.getTitle() != null ? candidate.getTitle() : "";
+                String content = candidate.getContent() != null ? candidate.getContent() : "";
+                String textToCheck = title + " " + content;
+                
+                // Check if at least one keyword is present
+                boolean match = requiredKeywords.stream()
+                        .anyMatch(keyword -> textToCheck.contains(keyword));
+                
+                if (match) {
+                    articles.add(candidate);
+                }
+            }
+        } else {
+            // No keywords to filter, just take top N
+            articles = candidates.stream()
+                    .limit(limit)
+                    .collect(Collectors.toList());
+        }
 
         return articles.stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
 
-    @Cacheable(value = "intent_analysis", key = "#userQuery", unless = "#result.query == #userQuery && #result.category == null")
-    public IntentAnalysisResponse analyzeIntent(String userQuery) {
-        if (userQuery == null || userQuery.isBlank()) {
-            return new IntentAnalysisResponse(userQuery, null, 0);
-        }
+    private IntentAnalysisResponse analyzeIntentLocal(String query) {
+        String category = null;
+        int dateRange = 0;
+        List<String> cleanKeywords = new ArrayList<>();
+        String primaryCategoryKeyword = null; // 메인 카테고리 키워드 저장
+        boolean komoranSuccess = false;
 
-        // Step 2: Hybrid Approach (Rule-based + LLM)
-        // If query is short and simple (noun-based), skip LLM
-        if (isSimpleQuery(userQuery)) {
-            return new IntentAnalysisResponse(userQuery, null, 0);
-        }
-
-        List<Map<String, String>> messages = new ArrayList<>();
-
-        messages.add(Map.of(
-            "role", "system",
-            "content", 
-            "Analyze the user's search query and extract the intent. " +
-            "Return ONLY a JSON object with keys: 'query' (refined keywords), " +
-            "'category' (one of: TOP, POLITICS, ECONOMY, BUSINESS, SOCIETY, LOCAL, WORLD, NORTH_KOREA, CULTURE_LIFE, ENTERTAINMENT, SPORTS, WEATHER, SCIENCE_ENV, HEALTH, OPINION, PEOPLE, OTHER), " +
-            "and 'date_range' (number of days, default 0). " +
-            "Do not include markdown formatting like ```json."
-        ));
-
-        messages.add(Map.of(    
-                "role", "user",
-                "content", userQuery
-            ));
-
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("model", LLM_MODEL_NAME);
-        requestBody.put("messages", messages);
-
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(TIMEOUT_MS);
-        factory.setReadTimeout(TIMEOUT_MS);
-        RestTemplate restTemplate = new RestTemplate(factory);
-
+        // 1. Komoran Analysis
         try {
-            String requestBodyJson = OBJECT_MAPPER.writeValueAsString(requestBody);
+            KomoranResult analyzeResultList = komoran.analyze(query);
+            List<Token> tokenList = analyzeResultList.getTokenList();
+            komoranSuccess = true;
+            
+            log.info("[Search] Komoran Tokens: {}", tokenList.stream()
+                    .map(t -> t.getMorph() + "(" + t.getPos() + ")")
+                    .collect(Collectors.joining(", ")));
+            
+            StringBuilder currentChunk = new StringBuilder();
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(gmsApiKey);
-
-            HttpEntity<String> entity = new HttpEntity<>(requestBodyJson, headers);
-
-            ResponseEntity<Map> response = restTemplate.postForEntity(gmsLlmUrl, entity, Map.class);
-        
-            if (!response.getStatusCode().is2xxSuccessful()) {
-                log.error("[Intent Analysis] API 응답 실패, response={}", response.getStatusCode());
-                return new IntentAnalysisResponse(userQuery, null, 0);
-            }
-
-            if (response.getBody() != null) {
-                Map body = response.getBody();
-                List choices = (List) body.get("choices");
-                if (choices != null && !choices.isEmpty()) {
-                    Map firstChoice = (Map) choices.get(0);
-                    Map message = (Map) firstChoice.get("message");
-                    String content = (String) message.get("content");
-
-                    content = content.replace("```json", "").replace("```", "").trim();
-
-                    return OBJECT_MAPPER.readValue(content, IntentAnalysisResponse.class);
-                } else {
-                    log.error("[Intent Analysis] API 응답 body 없음 또는 choices 비어있음");
+            for (Token token : tokenList) {
+                String morph = token.getMorph();
+                String pos = token.getPos();
+                String matchedCat = matchCategory(morph);
+                int matchedDate = matchDateRange(morph);
+                
+                // 1. 카테고리/날짜 키워드 처리 (임베딩에서 제외)
+                if (matchedCat != null) {
+                    flushChunk(cleanKeywords, currentChunk); // 이전 청크 저장
+                    if (category == null) {
+                        category = matchedCat;
+                        primaryCategoryKeyword = morph;
+                    }
+                    continue;
                 }
-            } else {
-                log.error("[Intent Analysis] API 응답 body 없음");
+                
+                if (matchedDate != 0) {
+                    flushChunk(cleanKeywords, currentChunk); // 이전 청크 저장
+                    if (dateRange == 0) dateRange = matchedDate;
+                    continue;
+                }
+
+                // 2. 불용어 처리 (임베딩에서 제외)
+                if (isStopWord(morph)) {
+                    flushChunk(cleanKeywords, currentChunk); // 이전 청크 저장
+                    continue;
+                }
+
+                // 3. 검색어 병합 (Chunking)
+                if (isSearchablePos(pos)) {
+                    currentChunk.append(morph); // 공백 없이 병합 (예: 기아+타이거즈 -> 기아타이거즈)
+                } else {
+                    flushChunk(cleanKeywords, currentChunk); // 조사/어미 등 만나면 청크 종료
+                }
             }
-        } catch (HttpClientErrorException e) {
-            log.error("[Intent Analysis] GMS 4xx 에러. status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
-        } catch (ResourceAccessException e) {
-            log.warn("[Intent Analysis] Timeout or Network Error: {}", e.getMessage());
+            flushChunk(cleanKeywords, currentChunk); // 남은 청크 저장
+
         } catch (Exception e) {
-            log.error("[Intent Analysis] GMS 통신 실패 query={}", userQuery, e);
+            log.error("[Search] Komoran Analysis Failed", e);
         }
 
-        return new IntentAnalysisResponse(userQuery, null, 0);
-    }
-
-    private boolean isSimpleQuery(String query) {
-        // 1. Check length (less than 5 words usually implies simple keyword search)
-        if (query.split("\\s+").length < 5 && query.length() < 20) {
-            // 2. Check for complex keywords that require LLM understanding
-            return !containsComplexKeywords(query);
-        }
-        return false;
-    }
-
-    private boolean containsComplexKeywords(String query) {
-        // Keywords that imply time, filtering, or complex intent
-        String[] keywords = {
-            // Time/Date
-            "뉴스", "기사", "최근", "지난", "어제", "오늘", "내일", "이번", "올해", "작년", 
-            "주간", "월간", "연간", "기간", "날짜", "언제", "동안", "이후", "이전",
-            // Logic/Filtering
-            "분류", "카테고리", "분야", "주제", "제외", "포함", "없이", "빼고", 
-            // Sorting/Ranking/Action
-            "추천", "인기", "순위", "정렬", "가장", "제일", "상위", "베스트", 
-            "요약", "정리", "분석", "비교", "설명", "알려줘", "찾아줘", "보여줘",
-            // Categories
-            "정치", "경제", "사회", "문화", "세계", "국제", "스포츠", "연예", 
-            "과학", "기술", "IT", "건강", "날씨", "오피니언", "사설"
-        };
-        for (String keyword : keywords) {
-            if (query.contains(keyword)) {
-                return true;
+        // 2. Fallback: Simple Space Splitting (only if Komoran failed)
+        if (!komoranSuccess) {
+            String[] words = query.split("\\s+");
+            for (String word : words) {
+                String matchedCat = matchCategory(word);
+                int matchedDate = matchDateRange(word);
+                
+                if (matchedCat != null) {
+                    if (category == null) {
+                        category = matchedCat;
+                        primaryCategoryKeyword = word; // 키워드 저장
+                    } else {
+                        cleanKeywords.add(word);
+                    }
+                } else if (matchedDate != 0) {
+                    if (dateRange == 0) dateRange = matchedDate;
+                } else if (!isStopWord(word)) {
+                    cleanKeywords.add(word);
+                }
             }
         }
-        return false;
+        
+        // 3. 빈 쿼리 방지 로직: 모든 단어가 필터/불용어로 빠졌다면, 카테고리 키워드를 검색어로 복원
+        if (cleanKeywords.isEmpty() && primaryCategoryKeyword != null) {
+            cleanKeywords.add(primaryCategoryKeyword);
+            log.info("[Search] Query is empty after filtering. Restored category keyword: '{}'", primaryCategoryKeyword);
+        }
+        
+        String finalQuery = cleanKeywords.isEmpty() ? query : String.join(" ", cleanKeywords);
+        if (finalQuery.isBlank()) finalQuery = query;
+        
+        return new IntentAnalysisResponse(finalQuery, category, dateRange, cleanKeywords);
+    }
+
+    private void flushChunk(List<String> keywords, StringBuilder chunk) {
+        if (chunk.length() > 0) {
+            String keyword = chunk.toString();
+            keywords.add(keyword);
+            log.debug("[Search] Chunk added: {}", keyword);
+            chunk.setLength(0); // 버퍼 초기화
+        }
+    }
+
+    private boolean isSearchablePos(String pos) {
+        // NNG(일반명사) 포함: NNP(고유명사), SL(외국어), SH(한자), SN(숫자)
+        // 연속된 명사를 병합하기 위해 NNG도 포함시킴 (단, 불용어 필터링 필수)
+        return "NNG".equals(pos) || "NNP".equals(pos) || "SL".equals(pos) || "SH".equals(pos) || "SN".equals(pos);
+    }
+
+    private boolean isStopWord(String word) {
+        return word.equals("뉴스") || word.equals("기사") || word.equals("관련") || word.equals("소식") || 
+               word.equals("내용") || word.equals("대해") || word.equals("관하") || word.equals("궁금") || 
+               word.equals("알려") || word.equals("주") || word.equals("좀") || word.equals("어떻") || 
+               word.equals("무엇") || word.equals("어") || word.equals("하") || word.equals("되") || 
+               word.equals("이") || word.equals("가") || word.equals("을") || word.equals("를") || 
+               word.equals("은") || word.equals("는") || word.equals("의") || word.equals("에") || 
+               word.equals("에서") || word.equals("로") || word.equals("으로") || word.equals("와") || 
+               word.equals("과") || word.equals("도") || word.equals("만") || word.equals("나") || 
+               word.equals("이나") || word.equals("부터") || word.equals("까지") || word.equals("필요");
+    }    private String matchCategory(String word) {
+        // 1. TOP (속보, 헤드라인)
+        if (word.equals("속보") || word.equals("헤드라인") || word.equals("주요")) return "TOP";
+        
+        // 2. POLITICS (정치)
+        if (word.equals("정치") || word.equals("국회") || word.equals("정당") || word.equals("선거") || 
+            word.equals("청와대") || word.equals("대통령") || word.equals("행정")) return "POLITICS";
+        
+        // 3. ECONOMY (경제)
+        if (word.equals("경제") || word.equals("금융") || word.equals("재테크")) return "ECONOMY";
+        
+        // 4. BUSINESS (기업, 산업)
+        if (word.equals("기업") || word.equals("산업") || word.equals("증권") || word.equals("주식") || 
+            word.equals("부동산") || word.equals("마켓") || word.equals("비즈니스")) return "BUSINESS";
+        
+        // 5. SOCIETY (사회)
+        if (word.equals("사회") || word.equals("사건") || word.equals("사고") || word.equals("교육") || 
+            word.equals("노동") || word.equals("인권")) return "SOCIETY";
+        
+        // 6. LOCAL (지역)
+        if (word.equals("지역") || word.equals("전국") || word.equals("지방") || word.equals("광주") || 
+            word.equals("부산") || word.equals("대구") || word.equals("대전") || word.equals("인천")) return "LOCAL";
+        
+        // 7. WORLD (국제)
+        if (word.equals("세계") || word.equals("국제") || word.equals("해외") || word.equals("글로벌") || 
+            word.equals("미국") || word.equals("중국") || word.equals("일본")) return "WORLD";
+        
+        // 8. NORTH_KOREA (북한)
+        if (word.equals("북한") || word.equals("남북") || word.equals("통일")) return "NORTH_KOREA";
+        
+        // 9. CULTURE_LIFE (문화, 생활)
+        if (word.equals("문화") || word.equals("생활") || word.equals("라이프") || word.equals("여행") || 
+            word.equals("요리") || word.equals("책") || word.equals("공연") || word.equals("전시")) return "CULTURE_LIFE";
+        
+        // 10. ENTERTAINMENT (연예)
+        if (word.equals("연예") || word.equals("예능") || word.equals("게임") || word.equals("영화") || 
+            word.equals("드라마") || word.equals("스타") || word.equals("방송")) return "ENTERTAINMENT";
+        
+        // 11. SPORTS (스포츠)
+        if (word.equals("스포츠") || word.equals("축구") || word.equals("야구") || word.equals("농구") || 
+            word.equals("배구") || word.equals("골프") || word.equals("올림픽")) return "SPORTS";
+        
+        // 12. WEATHER (날씨)
+        if (word.equals("날씨") || word.equals("기상") || word.equals("태풍") || word.equals("비") || 
+            word.equals("눈") || word.equals("폭염") || word.equals("한파")) return "WEATHER";
+        
+        // 13. SCIENCE_ENV (과학, 환경)
+        if (word.equals("과학") || word.equals("기술") || word.equals("환경") || word.equals("IT") || 
+            word.equals("테크") || word.equals("모바일") || word.equals("인터넷") || word.equals("통신")) return "SCIENCE_ENV";
+        
+        // 14. HEALTH (건강)
+        if (word.equals("건강") || word.equals("의료") || word.equals("병원") || word.equals("의학") || 
+            word.equals("질병") || word.equals("코로나")) return "HEALTH";
+        
+        // 15. OPINION (사설)
+        if (word.equals("사설") || word.equals("칼럼") || word.equals("오피니언") || word.equals("논설")) return "OPINION";
+        
+        // 16. PEOPLE (인물)
+        if (word.equals("인물") || word.equals("사람") || word.equals("인터뷰") || word.equals("인사")) return "PEOPLE";
+        
+        return null;
+    }
+
+    private int matchDateRange(String word) {
+        if (word.equals("오늘") || word.equals("금일") || word.equals("하루")) return 1;
+        if (word.equals("어제") || word.equals("작일")) return 2;
+        if (word.equals("이번주") || word.equals("주간") || word.equals("요즘") || word.equals("최근") || 
+            word.equals("최신") || word.equals("일주일")) return 7;
+        if (word.equals("이번달") || word.equals("월간") || word.equals("한달")) return 30;
+        return 0;
     }
 
     private String toPgVectorLiteral(List<Double> embedding){
@@ -304,24 +427,59 @@ public class SearchService {
                 .url(article.getUrl())
                 .thumbnailUrl(article.getThumbnailUrl())
                 .author(article.getAuthor())
+                .publishedAt(article.getPublishedAt())
                 .build();
     }
 
-    public List<String> getSearchHistory(Long userId) {
+    public List<ArticleDto> getRecommendedArticles(Long userId) {
+        // Use native query to fetch embedding as string to avoid Hibernate mapping issues
+        String embeddingStr = userRepository.findPreferenceEmbeddingAsString(userId);
+        
+        if (embeddingStr == null || embeddingStr.isBlank()) {
+            return new ArrayList<>();
+        }
+
+        // Fix time range to 7 days
+        LocalDateTime startDate = LocalDateTime.now().minusDays(7);
+
+        // embeddingStr from Postgres cast(vector as varchar) is like "[0.1,0.2,...]"
+        // We can pass this directly to the repository query
+        List<Article> articles = articleRepository.findByEmbeddingSimilarityWithFilters(
+                embeddingStr, 10, null, startDate, MAX_DISTANCE_THRESHOLD);
+
+        return articles.stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+
+    public List<SearchHistoryDto> getSearchHistory(Long userId) {
         return userSearchHistoryRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
-                .map(UserSearchHistory::getQuery)
-                .distinct()
-                .limit(10) // Limit to recent 10 unique queries
+                .map(history -> new SearchHistoryDto(history.getId(), history.getQuery()))
+                .limit(20)
                 .collect(Collectors.toList());
     }
 
     @Transactional
-    public void deleteSearchHistory(Long userId, String query) {
-        userSearchHistoryRepository.deleteByUserIdAndQuery(userId, query);
+    public void deleteSearchHistory(Long userId, Long historyId) {
+        UserSearchHistory history = userSearchHistoryRepository.findById(historyId)
+                .orElseThrow(() -> new IllegalArgumentException("History not found"));
+
+        if (!history.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("Unauthorized access to history");
+        }
+
+        userSearchHistoryRepository.delete(history);
     }
 
     @Transactional
-    public void updateSearchHistory(Long userId, String oldQuery, String newQuery) {
-        userSearchHistoryRepository.updateQueryByUserIdAndQuery(userId, oldQuery, newQuery);
+    public void updateSearchHistory(Long userId, Long historyId, String newQuery) {
+        UserSearchHistory history = userSearchHistoryRepository.findById(historyId)
+                .orElseThrow(() -> new IllegalArgumentException("History not found"));
+
+        if (!history.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("Unauthorized access to history");
+        }
+
+        history.updateQuery(newQuery);
     }
 }

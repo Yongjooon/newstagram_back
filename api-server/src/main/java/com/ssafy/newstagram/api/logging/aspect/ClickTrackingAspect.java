@@ -1,8 +1,9 @@
-package com.ssafy.newstagram.api.aspect;
+package com.ssafy.newstagram.api.logging.aspect;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ssafy.newstagram.api.dto.UserInteractionLogsDto;
-import com.ssafy.newstagram.api.service.KafkaProducerService;
+import com.ssafy.newstagram.api.logging.dto.UserInteractionLogsDto;
+import com.ssafy.newstagram.api.logging.service.KafkaProducerService;
+import com.ssafy.newstagram.domain.constant.KafkaTopic;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -21,12 +22,6 @@ import java.time.LocalDateTime;
 @Aspect
 @Component
 public class ClickTrackingAspect {
-    /**
-     * Kafka 토픽 이름 정의
-     * 규칙: [도메인].[유형].[행위] -> user.log.article.click
-     */
-    private static final String URL_CLICK_TOPIC_NAME = "user.log.article.click";
-
     private final KafkaProducerService producerService;
     private final ObjectMapper objectMapper;
 
@@ -39,7 +34,7 @@ public class ClickTrackingAspect {
      * 뉴스 URL 클릭 시 호출
      * 로그 데이터 생성 및 Kafka 전송
      */
-    @Around("@annotation(com.ssafy.newstagram.api.annotation.CollectLog)")
+    @Around("@annotation(com.ssafy.newstagram.api.logging.annotation.CollectLog)")
     public Object captureArticleClickLog(ProceedingJoinPoint joinPoint) throws Throwable {
         // 메서드 정보 가져오기 (로깅용)
         String methodName = joinPoint.getSignature().toShortString();
@@ -53,19 +48,19 @@ public class ClickTrackingAspect {
 
         // 로그 DTO 빌드
         UserInteractionLogsDto logDto = UserInteractionLogsDto.builder()
-                .interaction_type("CLICK")
-                .created_at(LocalDateTime.now())
-                .session_id(request.getSession().getId())
-                .user_agent(request.getHeader("User-Agent"))
-                .ip_address(request.getRemoteAddr())
-                .user_id(userId)
-                .article_id(articledId)
+                .userId(userId)
+                .articleId(articledId)
+                .interactionType("CLICK")
+                .sessionId(request.getSession().getId())
+                .userAgent(request.getHeader("User-Agent"))
+                .ipAddress(request.getRemoteAddr())
+                .createdAt(LocalDateTime.now())
                 .build();
 
         // DTO -> JSON 변환 후 Kafka로 Message 전송
         try {
             String jsonMessage = objectMapper.writeValueAsString(logDto);
-            producerService.sendMessage(URL_CLICK_TOPIC_NAME, jsonMessage);
+            producerService.sendMessage(KafkaTopic.Log.INTERACTION, jsonMessage);
         } catch(Exception e) {
             log.error("[Kafka Error] 로그 전송 실패 - 위치: {}, UserID: {}, ArticleID: {}, IP: {}, 에러메시지: {}", methodName, userId, articledId, request.getRemoteAddr(), e.getMessage(), e);
         }

@@ -10,9 +10,9 @@ import com.ssafy.newstagram.domain.user.entity.User;
 
 public interface UserService {
     void register(RegisterRequestDto user);
-    void deleteUserByEmail(String email);
-    UserInfoDto getUserInfoByEmail(String email);
-    void updateNickname(String email, UpdateNicknameRequestDto dto);
-    User getUserByEmail(String email);
-    void updatePassword(String email, UpdatePasswordRequestDto dto);
+    void deleteUserById(Long userId);
+    UserInfoDto getUserInfoByUserId(Long userId);
+    void updateNickname(Long userId, UpdateNicknameRequestDto dto);
+    User getUserById(Long userId);
+    void updatePassword(Long userId, UpdatePasswordRequestDto dto);
 }

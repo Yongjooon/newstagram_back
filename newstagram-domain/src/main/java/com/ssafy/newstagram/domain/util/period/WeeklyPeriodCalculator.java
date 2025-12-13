@@ -1,4 +1,4 @@
-package com.ssafy.newstagram.api.article.util.period;
+package com.ssafy.newstagram.domain.util.period;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -18,11 +18,19 @@ public class WeeklyPeriodCalculator implements PeriodCalculator {
 
     @Override
     public LocalDateTime getEnd() {
-        LocalDate lastWeekSunday = LocalDate.now()
-                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-                .minusWeeks(1)
-                .plusDays(6);
+        LocalDate thisWeekMonday = LocalDate.now()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
 
-        return lastWeekSunday.atTime(23, 59, 59);
+        return thisWeekMonday.atStartOfDay();
+    }
+
+    @Override
+    public LocalDateTime getBeforeStart() {
+        return getStart().minusWeeks(1);
+    }
+
+    @Override
+    public LocalDateTime getBeforeEnd() {
+        return getEnd().minusWeeks(1);
     }
 }

@@ -14,10 +14,12 @@ import org.springframework.stereotype.Service;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService{
+    private final RefreshTokenService refreshTokenService;
     private final UserRepository userRepository;
     private final EmailService emailService;
     private final RedisTemplate<String, Object> redisTemplate;
@@ -26,6 +28,11 @@ public class AuthServiceImpl implements AuthService{
     private final String TOKEN_PREFIX = "password-reset:";
     private final long expirationMs = 3600000; // 1시간
 
+    @Override
+    public void logout(Long userId) {
+        refreshTokenService.delete(userId);
+    }
+  
     @Override
     public void requestPasswordReset(PasswordResetRequestRequestDto dto) {
         String email = dto.getEmail();
