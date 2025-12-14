@@ -1,4 +1,4 @@
-package com.ssafy.newstagram.api.logging.dto;
+package com.ssafy.newstagram.api.logging.model.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;

@@ -40,9 +40,9 @@ public class SwaggerConfig {
 
     @Bean
     GroupedOpenApi loggingOpenApi(){
-        String[] paths = {"/kafka/logging/**"};
+        String[] paths = {"/logging/**"};
         return GroupedOpenApi.builder()
-                .group("Kafka Test API (개발용)")
+                .group("Kafka 발행 API")
                 .pathsToMatch(paths)
                 .build();
     }

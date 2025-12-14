@@ -1,15 +1,15 @@
 package com.ssafy.newstagram.api.logging.aspect;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ssafy.newstagram.api.logging.dto.UserInteractionLogsDto;
-import com.ssafy.newstagram.api.logging.service.KafkaProducerService;
+import com.ssafy.newstagram.api.logging.model.dto.UserInteractionLogsDto;
+import com.ssafy.newstagram.api.logging.model.service.KafkaProducerService;
+import com.ssafy.newstagram.api.users.model.dto.CustomUserDetails;
 import com.ssafy.newstagram.domain.constant.KafkaTopic;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
-import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -43,13 +43,21 @@ public class ClickTrackingAspect {
         HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
 
         // UserId 및 기사Id 추출
-        Long articledId = findArticleIdFromArgs(joinPoint);
+        Long articleId = findArticleIdFromArgs(joinPoint);
         Long userId = getUserIdFromSecurity();
+        log.info("==== [Aspect Debug] ====");
+        log.info("1. ArticleID 추출결과: {}", articleId);
+        log.info("2. UserID 추출결과: {}", userId);
+        log.info("========================");
+        if (userId == null || articleId == null) {
+            log.warn("[Kafka Skip] 필수 데이터 누락. UserId 또는 ArticleId가 Null입니다.");
+            return joinPoint.proceed();
+        }
 
         // 로그 DTO 빌드
         UserInteractionLogsDto logDto = UserInteractionLogsDto.builder()
                 .userId(userId)
-                .articleId(articledId)
+                .articleId(articleId)
                 .interactionType("CLICK")
                 .sessionId(request.getSession().getId())
                 .userAgent(request.getHeader("User-Agent"))
@@ -62,7 +70,7 @@ public class ClickTrackingAspect {
             String jsonMessage = objectMapper.writeValueAsString(logDto);
             producerService.sendMessage(KafkaTopic.Log.INTERACTION, jsonMessage);
         } catch(Exception e) {
-            log.error("[Kafka Error] 로그 전송 실패 - 위치: {}, UserID: {}, ArticleID: {}, IP: {}, 에러메시지: {}", methodName, userId, articledId, request.getRemoteAddr(), e.getMessage(), e);
+            log.error("[Kafka Error] 로그 전송 실패 - 위치: {}, UserID: {}, ArticleID: {}, IP: {}, 에러메시지: {}", methodName, userId, articleId, request.getRemoteAddr(), e.getMessage(), e);
         }
 
         // 기존 메서드 실행
@@ -77,6 +85,10 @@ public class ClickTrackingAspect {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
             Object principal = authentication.getPrincipal();
+
+            if (principal instanceof CustomUserDetails) {
+                return ((CustomUserDetails) principal).getUserId();
+            }
 
             if (principal instanceof Long) {
                 return (Long) principal;
@@ -102,37 +114,14 @@ public class ClickTrackingAspect {
      * 기사 ID 인자값 추출
      */
     private Long findArticleIdFromArgs(ProceedingJoinPoint joinPoint) {
-        // 메서드 정보 가져오기 (에러 로그 기록용)
-        String methodName = joinPoint.getSignature().toShortString();
-        try {
-            MethodSignature signature = (MethodSignature) joinPoint.getSignature();
-            String[] paramNames = signature.getParameterNames();
-            Object[] args = joinPoint.getArgs();
+        Object[] args = joinPoint.getArgs();
+        if (args == null || args.length == 0) return null;
 
-            if (paramNames == null || args == null) return null;
-
-            for (int i = 0; i < paramNames.length; i++) {
-                String name = paramNames[i].toLowerCase();
-
-                if (name.contains("articleid")) {
-                    Object value = args[i];
-                    if (value == null) continue;
-
-                    if (value instanceof Long) {
-                        return (Long) value;
-                    } else if (value instanceof Integer) {
-                        return ((Integer) value).longValue();
-                    } else if (value instanceof String) {
-                        try {
-                            return Long.parseLong((String) value);
-                        } catch (NumberFormatException e) {
-                            log.warn("[ArticleId Extraction] 숫자 변환 실패 - 메서드: {}, 파라미터명: {}, 입력값: '{}'", methodName, name, value);
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.error("[ArticleId Extraction] 파라미터 분석 중 시스템 에러 - 메서드: {}", methodName, e);
+        if (args[0] instanceof Long) {
+            return (Long) args[0];
+        }
+        if (args[0] instanceof Integer) {
+            return ((Integer) args[0]).longValue();
         }
         return null;
     }
