@@ -1,4 +1,4 @@
-package com.ssafy.newstagram.api.logging.service;
+package com.ssafy.newstagram.api.logging.model.service;
 
 import com.ssafy.newstagram.api.logging.annotation.CollectLog;
 import lombok.extern.slf4j.Slf4j;

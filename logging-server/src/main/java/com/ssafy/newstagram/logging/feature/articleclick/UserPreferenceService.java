@@ -60,7 +60,7 @@ public class UserPreferenceService {
 
             User user = userRepository.findById(userId).orElseThrow();
             user.setPreferenceEmbedding(finalVector);
-            log.info("[Kafka] UserPreferenceService - User {} 취향 벡터 업데이트 완료 (참조 로그 수: {})", userId, logs.size());
+            log.info("[Kafka] UserPreferenceService - userId : {} - 취향 벡터 업데이트 완료 (참조 로그 수: {})", userId, logs.size());
         }
     }
 }
