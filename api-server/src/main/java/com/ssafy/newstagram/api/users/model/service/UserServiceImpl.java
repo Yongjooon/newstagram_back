@@ -31,6 +31,7 @@ public class UserServiceImpl implements  UserService{
 
         // User 객체 생성
         User user = User.builder()
+                .phoneNumber(dto.getPhoneNumber())
                 .email(dto.getEmail())
                 .passwordHash(encodedPassword)
                 .nickname(dto.getNickname())

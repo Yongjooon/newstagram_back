@@ -2,6 +2,7 @@ package com.ssafy.newstagram.api.users.model.dto;
 
 
 import com.ssafy.newstagram.api.users.validation.ValidPassword;
+import com.ssafy.newstagram.api.users.validation.ValidPhoneNumber;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -12,6 +13,11 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public class RegisterRequestDto {
+
+    @Schema(description = "휴대폰번호", example = "01012345678")
+    @NotBlank
+    @ValidPhoneNumber
+    private String phoneNumber;
 
     @Schema(description = "이메일", example = "test@example.com")
     @Pattern(
