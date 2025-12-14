@@ -9,6 +9,7 @@ SET search_path TO public;
 -- 1. 사용자 테이블: 사용자 계정 정보 및 선호도 임베딩 저장
 CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
+    phone_number VARCHAR(15) NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     nickname VARCHAR(50) NOT NULL,

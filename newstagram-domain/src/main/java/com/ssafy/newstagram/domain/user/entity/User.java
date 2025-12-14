@@ -29,6 +29,9 @@ public class User {
     @Column(nullable = false)
     private String nickname;
 
+    @Column(name = "phone_number", nullable = false, length = 15)
+    private String phoneNumber;
+
     @Column(name = "login_type", nullable = false, length = 50)
     @Builder.Default
     private String loginType = "EMAIL";
