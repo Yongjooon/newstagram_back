@@ -19,6 +19,8 @@ import kr.co.shineware.nlp.komoran.model.KomoranResult;
 import kr.co.shineware.nlp.komoran.model.Token;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpEntity;
@@ -46,6 +48,10 @@ public class SearchService {
     private final UserSearchHistoryRepository userSearchHistoryRepository;
     private final UserRepository userRepository;
     private final NewsCategoryRepository newsCategoryRepository;
+
+    @Autowired
+    @Lazy
+    private SearchService self;
     
     @Value("${gms.api.base-url}")
     private String gmsApiBaseUrl;
@@ -61,15 +67,18 @@ public class SearchService {
 
     @Transactional
     public List<ArticleDto> searchArticles(Long userId, String query, int limit, int page) {
-        // 1. Save Search History
-        saveSearchHistory(userId, query);
+        // 1. Save Search History (Only for the first page)
+        if (page == 0) {
+            saveSearchHistory(userId, query);
+        }
 
         // 2. Perform Search (Cached)
         // Authenticated search uses strict threshold (0.8) to limit results to relevant ones
-        return getCachedSearchResults(query, limit, page, 0.80);
+        // Use 'self' to invoke via proxy for caching
+        return self.getCachedSearchResults(query, limit, page, 0.80);
     }
 
-    @Cacheable(value = "search_results", key = "#query + '-' + #page")
+    @Cacheable(value = "search_results", key = "#query + '-' + #page + '-' + #limit + '-' + #threshold")
     public List<ArticleDto> getCachedSearchResults(String query, int limit, int page, double threshold) {
         log.info("[Search] Original Query: {}, Page: {}", query, page);
 
