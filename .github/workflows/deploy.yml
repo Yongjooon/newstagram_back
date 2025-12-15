@@ -230,6 +230,12 @@ jobs:
               -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
               -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
               -e GOOGLE_REDIRECT_URI="${{ secrets.GOOGLE_REDIRECT_URI }}" \
+              -e GMAIL_USERNAME="${{ secrets.GMAIL_USERNAME }}" \
+              -e GMAIL_APP_PASSWORD="${{ secrets.GMAIL_APP_PASSWORD }}" \
+              -e BASE_URL="${{ secrets.BASE_URL }}" \
+              -e SOLAPI_KEY="${{ secrets.SOLAPI_KEY }}" \
+              -e SOLAPI_SECRET="${{ secrets.SOLAPI_SECRET }}" \
+              -e SOLAPI_FROM_NUMBER="${{ secrets.SOLAPI_FROM_NUMBER }}" \
               ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_API }}:latest
 
             # 5. 헬스 체크 및 롤백
@@ -263,6 +269,12 @@ jobs:
                   -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
                   -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
                   -e GOOGLE_REDIRECT_URI="${{ secrets.GOOGLE_REDIRECT_URI }}" \
+                  -e GMAIL_USERNAME="${{ secrets.GMAIL_USERNAME }}" \
+                  -e GMAIL_APP_PASSWORD="${{ secrets.GMAIL_APP_PASSWORD }}" \
+                  -e BASE_URL="${{ secrets.BASE_URL }}" \
+                  -e SOLAPI_KEY="${{ secrets.SOLAPI_KEY }}" \
+                  -e SOLAPI_SECRET="${{ secrets.SOLAPI_SECRET }}" \
+                  -e SOLAPI_FROM_NUMBER="${{ secrets.SOLAPI_FROM_NUMBER }}" \
                   $CURRENT_IMAGE_ID
                 echo "Rollback successful."
               else
