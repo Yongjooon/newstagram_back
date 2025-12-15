@@ -80,6 +80,13 @@ public class GlobalExceptionHandler {
                 .body(BaseResponse.error("AUTH_401", "이메일 또는 비밀번호가 올바르지 않습니다.", errorDetail));
     }
 
+    @ExceptionHandler(VerificationException.class)
+    public ResponseEntity<?> handleVerificationException(VerificationException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+          BaseResponse.error("AUTH_400", e.getMessage(), null)
+        );
+    }
+
     // 모든 예외를 잡는 가장 상위 핸들러
     @ExceptionHandler(Exception.class)
     public ResponseEntity<BaseResponse<?>> handleException(Exception e) {
