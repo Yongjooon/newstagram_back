@@ -1,6 +1,6 @@
 package com.ssafy.newstagram.rss.clustering.service;
 
-import com.ssafy.newstagram.rss.clustering.util.period.Period;
+import com.ssafy.newstagram.domain.util.period.Period;
 import com.ssafy.newstagram.rss.entity.NewsBatchLog;
 import com.ssafy.newstagram.rss.repository.NewsBatchLogRepository;
 import lombok.RequiredArgsConstructor;

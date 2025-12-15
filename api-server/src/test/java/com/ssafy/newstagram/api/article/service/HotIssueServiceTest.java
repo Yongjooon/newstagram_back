@@ -2,8 +2,8 @@ package com.ssafy.newstagram.api.article.service;
 
 import com.ssafy.newstagram.api.article.dto.HotIssueSetDto;
 import com.ssafy.newstagram.api.article.repository.PeriodRecommendationRepository;
-import com.ssafy.newstagram.api.article.util.period.Period;
-import com.ssafy.newstagram.api.article.util.period.PeriodCalculator;
+import com.ssafy.newstagram.domain.util.period.Period;
+import com.ssafy.newstagram.domain.util.period.PeriodCalculator;
 import com.ssafy.newstagram.domain.recommend.entity.PeriodRecommendation;
 import org.apache.juli.logging.Log;
 import org.junit.jupiter.api.Test;
