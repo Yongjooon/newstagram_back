@@ -1,5 +1,6 @@
 package com.ssafy.newstagram.api.auth.model.dto;
 
+import com.ssafy.newstagram.api.users.validation.EmailFindCode;
 import com.ssafy.newstagram.api.users.validation.ValidPhoneNumber;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
@@ -14,6 +15,6 @@ public class EmailFindVerifyRequestDto {
 
     @Schema(description = "인증번호")
     @NotBlank
-    // todo: 인증번호 형식 검증
+    @EmailFindCode
     private String verificationCode;
 }
