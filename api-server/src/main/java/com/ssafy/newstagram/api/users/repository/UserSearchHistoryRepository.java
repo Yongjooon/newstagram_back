@@ -19,4 +19,12 @@ public interface UserSearchHistoryRepository extends JpaRepository<UserSearchHis
     @Modifying
     @Query("UPDATE UserSearchHistory h SET h.query = :newQuery WHERE h.user.id = :userId AND h.query = :oldQuery")
     int updateQueryByUserIdAndQuery(@Param("userId") Long userId, @Param("oldQuery") String oldQuery, @Param("newQuery") String newQuery);
+
+    @Modifying
+    @Query(value = "DELETE FROM user_search_histories WHERE id = :id AND user_id = :userId", nativeQuery = true)
+    int deleteByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);
+
+    @Modifying
+    @Query(value = "UPDATE user_search_histories SET query = :newQuery WHERE id = :id AND user_id = :userId", nativeQuery = true)
+    int updateQueryByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId, @Param("newQuery") String newQuery);
 }

@@ -474,25 +474,17 @@ public class SearchService {
 
     @Transactional
     public void deleteSearchHistory(Long userId, Long historyId) {
-        UserSearchHistory history = userSearchHistoryRepository.findById(historyId)
-                .orElseThrow(() -> new IllegalArgumentException("History not found"));
-
-        if (!history.getUser().getId().equals(userId)) {
-            throw new IllegalArgumentException("Unauthorized access to history");
+        int deletedCount = userSearchHistoryRepository.deleteByIdAndUserId(historyId, userId);
+        if (deletedCount == 0) {
+            throw new IllegalArgumentException("History not found or unauthorized");
         }
-
-        userSearchHistoryRepository.delete(history);
     }
 
     @Transactional
     public void updateSearchHistory(Long userId, Long historyId, String newQuery) {
-        UserSearchHistory history = userSearchHistoryRepository.findById(historyId)
-                .orElseThrow(() -> new IllegalArgumentException("History not found"));
-
-        if (!history.getUser().getId().equals(userId)) {
-            throw new IllegalArgumentException("Unauthorized access to history");
+        int updatedCount = userSearchHistoryRepository.updateQueryByIdAndUserId(historyId, userId, newQuery);
+        if (updatedCount == 0) {
+            throw new IllegalArgumentException("History not found or unauthorized");
         }
-
-        history.updateQuery(newQuery);
     }
 }
