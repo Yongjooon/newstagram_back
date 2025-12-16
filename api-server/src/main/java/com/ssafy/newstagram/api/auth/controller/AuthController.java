@@ -294,5 +294,17 @@ public class AuthController {
         );
     }
 
+    @PostMapping("/signup/phone-verification/verify")
+    public ResponseEntity<?> verifyPhoneVerification(
+            @Valid @RequestBody PhoneVerificationConfirmDto dto
+    ) {
+        verificationCodeService.confirmPhoneVerification(dto);
+        return ResponseEntity.status(HttpStatus.OK).body(
+                BaseResponse.successNoData(
+                        "AUTH_200",
+                        "휴대폰번호 인증 성공"
+                )
+        );
+    }
 
 }

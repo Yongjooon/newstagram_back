@@ -2,6 +2,7 @@ package com.ssafy.newstagram.api.auth.model.service;
 
 import com.ssafy.newstagram.api.auth.model.dto.EmailFindRequestDto;
 import com.ssafy.newstagram.api.auth.model.dto.EmailFindVerifyRequestDto;
+import com.ssafy.newstagram.api.auth.model.dto.PhoneVerificationConfirmDto;
 import com.ssafy.newstagram.api.auth.model.dto.PhoneVerificationRequestDto;
 
 public interface VerificationCodeService {
@@ -10,4 +11,6 @@ public interface VerificationCodeService {
     String verifyAndGetEmail(EmailFindVerifyRequestDto dto);
 
     void requestPhoneVerificationCode(PhoneVerificationRequestDto dto, long expirationMs);
+
+    void confirmPhoneVerification(PhoneVerificationConfirmDto dto);
 }

@@ -2,6 +2,7 @@ package com.ssafy.newstagram.api.auth.model.service;
 
 import com.ssafy.newstagram.api.auth.model.dto.EmailFindRequestDto;
 import com.ssafy.newstagram.api.auth.model.dto.EmailFindVerifyRequestDto;
+import com.ssafy.newstagram.api.auth.model.dto.PhoneVerificationConfirmDto;
 import com.ssafy.newstagram.api.auth.model.dto.PhoneVerificationRequestDto;
 import com.ssafy.newstagram.api.exception.VerificationException;
 import com.ssafy.newstagram.api.users.repository.UserRepository;
@@ -105,6 +106,37 @@ public class VerificationCodeServiceImpl implements VerificationCodeService{
         System.out.println(msg);
 
         smsService.send(phoneNumber, msg);
+    }
+
+    @Override
+    public void confirmPhoneVerification(PhoneVerificationConfirmDto dto) {
+        String phoneNumber = dto.getPhoneNumber();
+        String inputCode = dto.getVerificationCode();
+
+        String key = generatePhoneVerificationKey(phoneNumber);
+
+        String code = (String) redisTemplate.opsForHash().get(key, "code");
+        Integer attempts = (Integer) redisTemplate.opsForHash().get(key, "attempts");
+
+        if (code == null || attempts == null) {
+            throw new VerificationException("인증 정보가 만료되었거나 존재하지 않습니다.");
+        }
+
+        int remainingAttempts = (int) attempts;
+        if (remainingAttempts <= 0) {
+            redisTemplate.delete(key);
+            throw new VerificationException("시도 횟수를 초과하였습니다. 인증 요청을 다시 해주세요.");
+        }
+
+        if (!code.equals(inputCode)) {
+            redisTemplate.opsForHash().put(key, "attempts", remainingAttempts - 1);
+            throw new VerificationException("만료되거나 유효하지 않은 인증번호입니다.");
+        }
+
+        redisTemplate.delete(key);
+
+        redisTemplate.opsForHash().put(key, "verified", true);
+        redisTemplate.expire(key, 3600000, TimeUnit.MILLISECONDS);
     }
 
     private String generateEmailFindKey(String phoneNumber){
