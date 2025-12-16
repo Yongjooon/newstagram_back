@@ -229,7 +229,7 @@ public class AuthController {
             @Valid @RequestBody EmailFindRequestDto dto
     ) {
         final long expirationMs = 300000;
-        verificationCodeService.requestVerificationCode(dto, expirationMs);
+        verificationCodeService.requestEmailFindVerificationCode(dto, expirationMs);
 
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.success(
@@ -275,4 +275,24 @@ public class AuthController {
                 )
         );
     }
+
+    @PostMapping("/signup/phone-verification/request")
+    public ResponseEntity<?> requestPhoneVerification(
+        @Valid @RequestBody PhoneVerificationRequestDto dto
+    ) {
+        final long expirationMs = 300000;
+        verificationCodeService.requestPhoneVerificationCode(dto, expirationMs);
+        return ResponseEntity.status(HttpStatus.OK).body(
+                BaseResponse.success(
+                        "AUTH_200",
+                        "휴대폰번호 인증 요청 성공",
+                        Map.of(
+                                "message", dto.getPhoneNumber() + "로 인증번호가 전송되었습니다. 1분 이상 인증번호가 오지 않는다면, 휴대폰번호를 확인해보시고 재요청해주세요.",
+                                "expiresIn", expirationMs / 1000
+                        )
+                )
+        );
+    }
+
+
 }

@@ -2,6 +2,7 @@ package com.ssafy.newstagram.api.auth.model.service;
 
 import com.ssafy.newstagram.api.auth.model.dto.EmailFindRequestDto;
 import com.ssafy.newstagram.api.auth.model.dto.EmailFindVerifyRequestDto;
+import com.ssafy.newstagram.api.auth.model.dto.PhoneVerificationRequestDto;
 import com.ssafy.newstagram.api.exception.VerificationException;
 import com.ssafy.newstagram.api.users.repository.UserRepository;
 import com.ssafy.newstagram.domain.user.entity.User;
@@ -10,7 +11,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -24,17 +24,17 @@ public class VerificationCodeServiceImpl implements VerificationCodeService{
     private final SecureRandom random = new SecureRandom();
 
     private final String EMAIL_FIND_CODE_PREFIX = "email-find:";
+    private final String PHONE_VERIFICATION_CODE_PREFIX = "phone-verification:";
     private static final int MAX_ATTEMPTS = 5;
 
-
     @Override
-    public void requestVerificationCode(EmailFindRequestDto dto, long expirationMs) {
+    public void requestEmailFindVerificationCode(EmailFindRequestDto dto, long expirationMs) {
         String phoneNumber = dto.getPhoneNumber();
         long userId = userRepository.findIdByPhoneNumber(phoneNumber).orElseThrow(
                 () -> new IllegalArgumentException("회원을 찾을 수 없습니다.")
         );
 
-        String key = generateKey(phoneNumber);
+        String key = generatePhoneVerificationKey(phoneNumber);
         String code = generateCode();
         redisTemplate.opsForHash().put(key, "code", code);
         redisTemplate.opsForHash().put(key, "attempts", MAX_ATTEMPTS);
@@ -45,14 +45,13 @@ public class VerificationCodeServiceImpl implements VerificationCodeService{
         String msg = "[Newstagram] 인증번호: " + code;
         System.out.println(msg);
 
-        // 테스트 시에는 최대한 주석처리해주세요.. 한 건당 몇 십원이지만 돈이 나갑니다....ㅠㅠ
         smsService.send(phoneNumber, msg);
     }
 
     @Override
     public String verifyAndGetEmail(EmailFindVerifyRequestDto dto) {
         String inputCode = dto.getVerificationCode();
-        String key = generateKey(dto.getPhoneNumber());
+        String key = generateEmailFindKey(dto.getPhoneNumber());
 
         String code = (String) redisTemplate.opsForHash().get(key, "code");
         Integer attempts = (Integer) redisTemplate.opsForHash().get(key, "attempts");
@@ -87,9 +86,28 @@ public class VerificationCodeServiceImpl implements VerificationCodeService{
         return user.getEmail();
     }
 
+    @Override
+    public void requestPhoneVerificationCode(PhoneVerificationRequestDto dto, long expirationMs) {
+        String phoneNumber = dto.getPhoneNumber();
 
-    private String generateKey(String phoneNumber){
+        String key = generatePhoneVerificationKey(phoneNumber);
+        String code = generateCode();
+        redisTemplate.opsForHash().put(key, "code", code);
+        redisTemplate.opsForHash().put(key, "attempts", MAX_ATTEMPTS);
+
+        redisTemplate.expire(key, expirationMs, TimeUnit.MILLISECONDS);
+
+        String msg = "[Newstagram] 인증번호: " + code;
+        System.out.println(msg);
+
+        smsService.send(phoneNumber, msg);
+    }
+
+    private String generateEmailFindKey(String phoneNumber){
         return EMAIL_FIND_CODE_PREFIX + phoneNumber;
+    }
+    private String generatePhoneVerificationKey(String phoneNumber){
+        return PHONE_VERIFICATION_CODE_PREFIX + phoneNumber;
     }
     private String generateCode(){
         int number = random.nextInt((int) Math.pow(10, CODE_LENGTH));
