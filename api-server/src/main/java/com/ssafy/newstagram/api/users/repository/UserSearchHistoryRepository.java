@@ -11,6 +11,9 @@ import java.util.List;
 public interface UserSearchHistoryRepository extends JpaRepository<UserSearchHistory, Long> {
     List<UserSearchHistory> findByUserIdOrderByCreatedAtDesc(Long userId);
 
+    @Query(value = "SELECT id, query FROM user_search_histories WHERE user_id = :userId ORDER BY created_at DESC", nativeQuery = true)
+    List<SearchHistoryProjection> findHistoryNative(@Param("userId") Long userId);
+
     void deleteByUserIdAndQuery(Long userId, String query);
 
     @Modifying

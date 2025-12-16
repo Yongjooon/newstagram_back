@@ -466,7 +466,7 @@ public class SearchService {
     }
 
     public List<SearchHistoryDto> getSearchHistory(Long userId) {
-        return userSearchHistoryRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+        return userSearchHistoryRepository.findHistoryNative(userId).stream()
                 .map(history -> new SearchHistoryDto(history.getId(), history.getQuery()))
                 .limit(20)
                 .collect(Collectors.toList());
