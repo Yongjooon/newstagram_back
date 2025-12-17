@@ -277,8 +277,26 @@ public class AuthController {
     }
 
     @PostMapping("/signup/phone-verification/request")
+    @Operation(
+            summary = "회원가입 휴대폰 인증번호 요청",
+            description =
+                    "회원가입을 위해 휴대폰 번호로 인증번호를 전송합니다.\n\n" +
+                            "- 입력한 휴대폰 번호로 인증번호(SMS)가 발송됩니다.\n" +
+                            "- 인증번호는 일정 시간(5분) 동안만 유효합니다.\n" +
+                            "- 동일 휴대폰 번호로 여러 번 요청 시, 기존 인증번호는 무효화됩니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "휴대폰 인증번호 전송 성공"
+            )
+    })
     public ResponseEntity<?> requestPhoneVerification(
-        @Valid @RequestBody PhoneVerificationRequestDto dto
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "휴대폰 인증번호 요청 정보",
+                    required = true
+            )
+            @Valid @RequestBody PhoneVerificationRequestDto dto
     ) {
         final long expirationMs = 300000;
         verificationCodeService.requestPhoneVerificationCode(dto, expirationMs);
@@ -295,7 +313,27 @@ public class AuthController {
     }
 
     @PostMapping("/signup/phone-verification/verify")
+    @Operation(
+            summary = "회원가입 휴대폰 인증번호 검증",
+            description =
+                    "휴대폰 번호와 인증번호를 검증하여 회원가입을 위한 휴대폰 인증을 완료합니다.\n\n" +
+                            "- 인증번호가 일치하고 유효한 경우 인증이 완료됩니다.\n" +
+                            "- 인증번호가 틀리거나 만료된 경우 에러가 발생합니다.\n" +
+                            "- 하나의 인증번호에 대하여, 최대 5번의 요청이 가능하고 초과 시에는 해당 인증번호를 만료시킵니다.\n" +
+                            "- 인증 성공 시, 해당 휴대폰 번호는 회원가입에 사용할 수 있습니다.\n" +
+                            "- 인증 완료 여부는 1시간 동안 저장되므로, 인증 후 1시간 이내에 회원가입을 완료해야 합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "휴대폰 인증 성공"
+            )
+    })
     public ResponseEntity<?> verifyPhoneVerification(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "휴대폰 인증번호 검증 정보",
+                    required = true
+            )
             @Valid @RequestBody PhoneVerificationConfirmDto dto
     ) {
         verificationCodeService.confirmPhoneVerification(dto);
