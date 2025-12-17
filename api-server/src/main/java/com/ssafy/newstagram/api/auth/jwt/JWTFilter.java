@@ -98,6 +98,7 @@ public class JWTFilter extends OncePerRequestFilter {
         return uri.equals("/api/users/email")
                 || uri.equals("/api/users/email/availability")
                 || uri.equals("/api/users/phone-number/availability")
+                || uri.equals("/api/users/nickname/availability")
                 || uri.startsWith("/auth/signup")
                 || uri.startsWith("/auth/email/find")
                 || uri.startsWith("/api/swagger")

@@ -237,4 +237,41 @@ public class UserController {
                 )
         );
     }
+
+    @PostMapping("/nickname/availability")
+    @Operation(
+            summary = "닉네임 중복 체크",
+            description = "닉네임의 중복 여부를 확인합니다.\n\n" +
+                    "- 사용 가능한 닉네임인 경우 `available = true`가 반환됩니다.\n" +
+                    "- 이미 사용 중인 닉네임인 경우 `available = false`가 반환됩니다.\n" +
+                    "- 이 API는 중복 여부를 조회하는 용도로, 정상 요청 시에 항상 200 응답을 반환합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "닉네임 중복 체크 성공"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "닉네임 형식 오류 또는 잘못된 요청"
+            )
+    })
+    public ResponseEntity<?> checkNicknameAvailability(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "닉네임 중복 체크 요청 정보",
+                    required = true
+            )
+            @Valid @RequestBody NicknameAvailabilityRequestDto dto
+    ){
+        boolean isAvailable = userService.isAvailableNickname(dto);
+        return ResponseEntity.status(HttpStatus.OK).body(
+                BaseResponse.success(
+                        "USER_200",
+                        "닉네임 중복 체크 성공",
+                        Map.of(
+                                "available", isAvailable
+                        )
+                )
+        );
+    }
 }

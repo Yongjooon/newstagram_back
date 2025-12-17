@@ -114,4 +114,10 @@ public class UserServiceImpl implements  UserService{
         return !userRepository.existsByPhoneNumberIncludedDeleted(phoneNumber);
     }
 
+    @Override
+    public boolean isAvailableNickname(NicknameAvailabilityRequestDto dto) {
+        String nickname = dto.getNickname();
+        return !userRepository.existsByNicknameIncludedDeleted(nickname);
+    }
+
 }

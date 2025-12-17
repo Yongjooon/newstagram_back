@@ -15,4 +15,5 @@ public interface UserService {
 
     boolean isAvailableEmail(EmailAvailabilityRequestDto dto);
     boolean isAvailablePhoneNumber(PhoneNumberAvailabilityRequestDto dto);
+    boolean isAvailableNickname(NicknameAvailabilityRequestDto dto);
 }
