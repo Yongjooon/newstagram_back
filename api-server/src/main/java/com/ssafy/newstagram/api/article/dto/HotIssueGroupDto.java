@@ -13,7 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 public class HotIssueGroupDto {
 
-    private int groupRanking;      // 클러스터 랭킹 (1, 2, 3 ...)
+    private Integer groupRanking;      // 클러스터 랭킹 (1, 2, 3 ...)
 
     private List<HotIssueArticleDto> articles;
 }
