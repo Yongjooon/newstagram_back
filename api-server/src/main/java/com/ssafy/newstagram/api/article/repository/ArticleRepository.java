@@ -1,5 +1,6 @@
 package com.ssafy.newstagram.api.article.repository;
 
+import com.ssafy.newstagram.api.article.dto.ArticleDto;
 import com.ssafy.newstagram.domain.news.entity.Article;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -8,8 +9,25 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface ArticleRepository extends JpaRepository<Article, Long> {
+
+    @Query("""
+        SELECT new com.ssafy.newstagram.api.article.dto.ArticleDto(
+            a.id,
+            a.title,
+            a.content,
+            a.description,
+            a.url,
+            a.thumbnailUrl,
+            a.author,
+            a.publishedAt
+        )
+        FROM Article a
+        WHERE a.id = :id
+    """)
+    Optional<ArticleDto> findDtoById(@Param("id") Long id);
 
     List<Article> findByPublishedAtBetween(LocalDateTime start, LocalDateTime end);
 
