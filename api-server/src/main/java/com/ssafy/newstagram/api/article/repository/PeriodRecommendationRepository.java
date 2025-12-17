@@ -60,11 +60,10 @@ public interface PeriodRecommendationRepository extends JpaRepository<PeriodReco
             FROM period_recommendations pr
             WHERE pr.period_type = :periodType
               AND pr.period_start = :periodStart
-              AND (:cursor IS NULL OR pr.ranking > :cursor)
+              AND (:cursor IS NULL OR pr.ranking > :cursor AND pr.ranking <= :cursor+:groupSize)
         ) ranked
         WHERE ranked.rank_in_group <= :limitCount
         ORDER BY ranked.group_ranking ASC, ranked.rank_in_group ASC
-        LIMIT :groupSize * :limitCount
         """,
             nativeQuery = true)
     List<HotIssueItemDto> findTopNPerRankingWithPaging(
