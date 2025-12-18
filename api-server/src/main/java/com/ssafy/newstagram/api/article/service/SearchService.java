@@ -416,15 +416,19 @@ public class SearchService {
 
     private void saveSearchHistory(Long userId, String query) {
         try {
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + userId));
+            // 1. Try to update existing history timestamp to move it to top
+            int updated = userSearchHistoryRepository.updateCreatedAtByUserIdAndQuery(userId, query);
 
-            UserSearchHistory history = UserSearchHistory.builder()
-                    .user(user)
-                    .query(query)
-                    .build();
+            // 2. If not exists, save new history
+            if (updated == 0) {
+                User user = userRepository.getReferenceById(userId);
+                UserSearchHistory history = UserSearchHistory.builder()
+                        .user(user)
+                        .query(query)
+                        .build();
 
-            userSearchHistoryRepository.save(history);
+                userSearchHistoryRepository.save(history);
+            }
         } catch (Exception e) {
             log.error("Failed to save search history for user: {}", userId, e);
             // Do not fail the search if history saving fails
