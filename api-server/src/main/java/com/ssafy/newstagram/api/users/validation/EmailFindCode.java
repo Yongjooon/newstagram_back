@@ -6,14 +6,13 @@ import jakarta.validation.Payload;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
-@Constraint(validatedBy = PhoneNumberValidator.class)
+@Constraint(validatedBy = EmailFindCodeValidator.class)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface ValidPhoneNumber {
+public @interface EmailFindCode {
 
-    String message() default "유효하지 않은 휴대폰번호 형식입니다.";
+    String message() default "인증번호는 6자리 숫자입니다.";
 
     Class<?>[] groups() default {};
 
     Class<? extends Payload>[] payload() default {};
-
 }

@@ -17,6 +17,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
@@ -29,7 +31,9 @@ public class UserController {
     @Operation(
             summary = "일반 회원가입",
             description = "이메일 기반 일반 회원가입을 처리합니다.\n\n"
-                    + "- 이메일, 비밀번호, 닉네임 정보를 입력받아 회원을 생성합니다.\n"
+                    + "- 휴대폰번호, 이메일, 비밀번호, 닉네임 정보를 입력받아 회원을 생성합니다.\n"
+                    + "- 회원가입 요청을 진행하기 전에, 휴대폰 인증을 먼저 진행하여야 합니다.\n"
+                    + "- 휴대폰 인증 완료 여부는 1시간 동안 저장되므로, 인증 후 1시간 이내에 회원가입을 완료하여야 합니다.\n"
                     + "- 비밀번호는 서버에서 암호화되어 저장됩니다.\n"
                     + "- 동일한 이메일이 존재할 경우 회원가입이 실패합니다."
     )
@@ -155,6 +159,119 @@ public class UserController {
         userService.updatePassword(userDetails.getUserId(), dto);
         return ResponseEntity.status(HttpStatus.OK).body(
           BaseResponse.successNoData("USER_200", "비밀번호 변경 성공")
+        );
+    }
+
+    @PostMapping("/email/availability")
+    @Operation(
+            summary = "이메일 중복 체크",
+            description = "회원가입 시 사용할 이메일의 사용 가능 여부를 확인합니다.\n\n" +
+                    "- 사용 가능한 이메일인 경우 `available = true`가 반환됩니다.\n" +
+                    "- 이미 사용 중인 이메일인 경우 `available = false`가 반환됩니다.\n" +
+                    "- 탈퇴한 이메인인 경우, 현재 `available = false`가 반환됩니다.\n" +
+                    "- 이 API는 중복 여부를 조회하는 용도로, 정상 요청 시에 항상 200 응답을 반환합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "이메일 중복 체크 성공"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "이메일 형식 오류 또는 잘못된 요청"
+            )
+    })
+    public ResponseEntity<?> checkEmailAvailability(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "이메일 중복 체크 요청 정보",
+                    required = true
+            )
+            @Valid @RequestBody EmailAvailabilityRequestDto dto
+    ){
+        boolean isAvailable = userService.isAvailableEmail(dto);
+        return ResponseEntity.status(HttpStatus.OK).body(
+                BaseResponse.success(
+                        "USER_200",
+                        "이메일 중복 체크 성공",
+                        Map.of(
+                                "available", isAvailable
+                        )
+                )
+        );
+    }
+
+    @PostMapping("/phone-number/availability")
+    @Operation(
+            summary = "휴대폰 번호 중복 체크",
+            description = "회원가입 시 사용할 휴대폰 번호의 사용 가능 여부를 확인합니다.\n\n" +
+                    "- 사용 가능한 휴대폰 번호인 경우 `available = true`가 반환됩니다.\n" +
+                    "- 이미 사용 중인 휴대폰 번호인 경우 `available = false`가 반환됩니다.\n" +
+                    "- 탈퇴한 휴대폰 번호인 경우, 현재 `available = false`가 반환됩니다.\n" +
+                    "- 이 API는 중복 여부를 조회하는 용도로, 정상 요청 시에 항상 200 응답을 반환합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "휴대폰 번호 중복 체크 성공"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "휴대폰 번호 형식 오류 또는 잘못된 요청"
+            )
+    })
+    public ResponseEntity<?> checkEmailAvailability(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "휴대폰 번호중복 체크 요청 정보",
+                    required = true
+            )
+            @Valid @RequestBody PhoneNumberAvailabilityRequestDto dto
+    ){
+        boolean isAvailable = userService.isAvailablePhoneNumber(dto);
+        return ResponseEntity.status(HttpStatus.OK).body(
+                BaseResponse.success(
+                        "USER_200",
+                        "휴대폰 번호 중복 체크 성공",
+                        Map.of(
+                                "available", isAvailable
+                        )
+                )
+        );
+    }
+
+    @PostMapping("/nickname/availability")
+    @Operation(
+            summary = "닉네임 중복 체크",
+            description = "닉네임의 중복 여부를 확인합니다.\n\n" +
+                    "- 사용 가능한 닉네임인 경우 `available = true`가 반환됩니다.\n" +
+                    "- 이미 사용 중인 닉네임인 경우 `available = false`가 반환됩니다.\n" +
+                    "- 이 API는 중복 여부를 조회하는 용도로, 정상 요청 시에 항상 200 응답을 반환합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "닉네임 중복 체크 성공"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "닉네임 형식 오류 또는 잘못된 요청"
+            )
+    })
+    public ResponseEntity<?> checkNicknameAvailability(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "닉네임 중복 체크 요청 정보",
+                    required = true
+            )
+            @Valid @RequestBody NicknameAvailabilityRequestDto dto
+    ){
+        boolean isAvailable = userService.isAvailableNickname(dto);
+        return ResponseEntity.status(HttpStatus.OK).body(
+                BaseResponse.success(
+                        "USER_200",
+                        "닉네임 중복 체크 성공",
+                        Map.of(
+                                "available", isAvailable
+                        )
+                )
         );
     }
 }

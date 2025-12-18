@@ -1,9 +1,7 @@
 package com.ssafy.newstagram.api.users.model.service;
 
-import com.ssafy.newstagram.api.users.model.dto.RegisterRequestDto;
-import com.ssafy.newstagram.api.users.model.dto.UpdateNicknameRequestDto;
-import com.ssafy.newstagram.api.users.model.dto.UpdatePasswordRequestDto;
-import com.ssafy.newstagram.api.users.model.dto.UserInfoDto;
+import com.ssafy.newstagram.api.auth.model.service.VerificationCodeService;
+import com.ssafy.newstagram.api.users.model.dto.*;
 import com.ssafy.newstagram.api.users.repository.UserRepository;
 import com.ssafy.newstagram.domain.user.entity.User;
 import jakarta.transaction.Transactional;
@@ -17,9 +15,16 @@ public class UserServiceImpl implements  UserService{
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final VerificationCodeService verificationCodeService;
 
     @Override
     public void register(RegisterRequestDto dto) {
+
+        // 휴대폰 인증여부 체크
+        String phoneNumber = dto.getPhoneNumber();
+        if(!verificationCodeService.checkVerified(phoneNumber)){
+            throw new IllegalArgumentException("휴대폰 인증을 진행해주세요.");
+        }
 
         // 이메일 중복 체크
         if(userRepository.existsByEmailIncludeDeleted(dto.getEmail())){
@@ -38,6 +43,8 @@ public class UserServiceImpl implements  UserService{
                 .build();
 
         userRepository.save(user);
+
+        verificationCodeService.deletePhoneVerificationKey(phoneNumber);
     }
 
     @Override
@@ -93,6 +100,24 @@ public class UserServiceImpl implements  UserService{
         String newEncoded = passwordEncoder.encode(dto.getNewPassword());
 
         user.updatePasswordHash(newEncoded);
+    }
+
+    @Override
+    public boolean isAvailableEmail(EmailAvailabilityRequestDto dto) {
+        String email = dto.getEmail();
+        return !userRepository.existsByEmailIncludeDeleted(email);
+    }
+
+    @Override
+    public boolean isAvailablePhoneNumber(PhoneNumberAvailabilityRequestDto dto) {
+        String phoneNumber = dto.getPhoneNumber();
+        return !userRepository.existsByPhoneNumberIncludedDeleted(phoneNumber);
+    }
+
+    @Override
+    public boolean isAvailableNickname(NicknameAvailabilityRequestDto dto) {
+        String nickname = dto.getNickname();
+        return !userRepository.existsByNicknameIncludedDeleted(nickname);
     }
 
 }

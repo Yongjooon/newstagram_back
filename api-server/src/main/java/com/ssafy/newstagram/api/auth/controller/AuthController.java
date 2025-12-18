@@ -208,11 +208,28 @@ public class AuthController {
     }
 
     @PostMapping("/email/find/request")
+    @Operation(
+            summary = "이메일 찾기 인증번호 요청",
+            description = "휴대폰 번호를 입력받아 이메일 찾기용 인증번호를 SMS로 전송합니다.\n\n" +
+                    "- 가입된 휴대폰 번호가 존재하는 경우에만 인증번호가 전송됩니다.\n" +
+                    "- 가입된 휴대폰 번호가 존재하지 않는 경우에는, 인증번호는 전송되지 않지만 보안을 위하여 동일한 응답을 보냅니다.\n" +
+                    "- 인증번호의 유효 시간은 5분입니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "이메일 찾기 요청 성공"
+            )
+    })
     public ResponseEntity<?> requestEmailFind(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "이메일 찾기 요청 정보",
+                    required = true
+            )
             @Valid @RequestBody EmailFindRequestDto dto
     ) {
         final long expirationMs = 300000;
-        verificationCodeService.requestVerificationCode(dto, expirationMs);
+        verificationCodeService.requestEmailFindVerificationCode(dto, expirationMs);
 
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.success(
@@ -227,7 +244,24 @@ public class AuthController {
     }
 
     @PostMapping("/email/find/verify")
+    @Operation(
+            summary = "이메일 찾기 인증번호 검증",
+            description = "휴대폰 번호와 인증번호를 검증하여 해당 사용자의 이메일을 반환합니다.\n\n" +
+                    "- 인증 성공 시 이메일이 반환됩니다.\n" +
+                    "- 인증번호가 틀리거나 만료된 경우 에러가 발생합니다.\n" +
+                    "- 하나의 인증번호에 대하여, 최대 5번의 요청이 가능하고 초과 시에는 해당 인증번호를 만료시킵니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "이메일 찾기 성공"
+            )
+    })
     public ResponseEntity<?> verifyEmailFind(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "이메일 찾기 인증 요청 정보",
+                    required = true
+            )
             @Valid @RequestBody EmailFindVerifyRequestDto dto
     ) {
         String email = verificationCodeService.verifyAndGetEmail(dto);
@@ -241,4 +275,74 @@ public class AuthController {
                 )
         );
     }
+
+    @PostMapping("/signup/phone-verification/request")
+    @Operation(
+            summary = "회원가입 휴대폰 인증번호 요청",
+            description =
+                    "회원가입을 위해 휴대폰 번호로 인증번호를 전송합니다.\n\n" +
+                            "- 입력한 휴대폰 번호로 인증번호(SMS)가 발송됩니다.\n" +
+                            "- 인증번호는 일정 시간(5분) 동안만 유효합니다.\n" +
+                            "- 동일 휴대폰 번호로 여러 번 요청 시, 기존 인증번호는 무효화됩니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "휴대폰 인증번호 전송 성공"
+            )
+    })
+    public ResponseEntity<?> requestPhoneVerification(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "휴대폰 인증번호 요청 정보",
+                    required = true
+            )
+            @Valid @RequestBody PhoneVerificationRequestDto dto
+    ) {
+        final long expirationMs = 300000;
+        verificationCodeService.requestPhoneVerificationCode(dto, expirationMs);
+        return ResponseEntity.status(HttpStatus.OK).body(
+                BaseResponse.success(
+                        "AUTH_200",
+                        "휴대폰번호 인증 요청 성공",
+                        Map.of(
+                                "message", dto.getPhoneNumber() + "로 인증번호가 전송되었습니다. 1분 이상 인증번호가 오지 않는다면, 휴대폰번호를 확인해보시고 재요청해주세요.",
+                                "expiresIn", expirationMs / 1000
+                        )
+                )
+        );
+    }
+
+    @PostMapping("/signup/phone-verification/verify")
+    @Operation(
+            summary = "회원가입 휴대폰 인증번호 검증",
+            description =
+                    "휴대폰 번호와 인증번호를 검증하여 회원가입을 위한 휴대폰 인증을 완료합니다.\n\n" +
+                            "- 인증번호가 일치하고 유효한 경우 인증이 완료됩니다.\n" +
+                            "- 인증번호가 틀리거나 만료된 경우 에러가 발생합니다.\n" +
+                            "- 하나의 인증번호에 대하여, 최대 5번의 요청이 가능하고 초과 시에는 해당 인증번호를 만료시킵니다.\n" +
+                            "- 인증 성공 시, 해당 휴대폰 번호는 회원가입에 사용할 수 있습니다.\n" +
+                            "- 인증 완료 여부는 1시간 동안 저장되므로, 인증 후 1시간 이내에 회원가입을 완료해야 합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "휴대폰 인증 성공"
+            )
+    })
+    public ResponseEntity<?> verifyPhoneVerification(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "휴대폰 인증번호 검증 정보",
+                    required = true
+            )
+            @Valid @RequestBody PhoneVerificationConfirmDto dto
+    ) {
+        verificationCodeService.confirmPhoneVerification(dto);
+        return ResponseEntity.status(HttpStatus.OK).body(
+                BaseResponse.successNoData(
+                        "AUTH_200",
+                        "휴대폰번호 인증 성공"
+                )
+        );
+    }
+
 }

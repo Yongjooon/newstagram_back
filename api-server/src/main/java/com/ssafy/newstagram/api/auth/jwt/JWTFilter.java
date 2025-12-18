@@ -20,6 +20,14 @@ public class JWTFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        String requestURI = request.getRequestURI();
+        System.out.println("uri: " + requestURI);
+
+        // 로그인 불필요 API는 JWT 검증 스킵
+        if (isPublicEndpoint(requestURI)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         String authorization = request.getHeader("Authorization");
 
@@ -84,6 +92,17 @@ public class JWTFilter extends OncePerRequestFilter {
 
         com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
         response.getWriter().write(mapper.writeValueAsString(body));
+    }
+
+    private boolean isPublicEndpoint(String uri) {
+        return uri.equals("/api/users/email")
+                || uri.equals("/api/users/email/availability")
+                || uri.equals("/api/users/phone-number/availability")
+                || uri.equals("/api/users/nickname/availability")
+                || uri.startsWith("/auth/signup")
+                || uri.startsWith("/auth/email/find")
+                || uri.startsWith("/api/swagger")
+                || uri.startsWith("/api/v3/api-docs");
     }
 
 }

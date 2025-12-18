@@ -11,12 +11,9 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class HotIssueSetDto {
+public class HotIssueResponse {
 
-    private String periodKey;
-    private String periodType;
+    private List<GroupRandomArticleResponse> groups;
+    private PageInfoDto pageInfo;
 
-    // 클러스터(그룹) 단위 Hot Issue
-    private List<HotIssueGroupDto> groups;
 }
-
