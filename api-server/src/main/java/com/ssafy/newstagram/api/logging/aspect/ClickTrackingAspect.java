@@ -45,12 +45,8 @@ public class ClickTrackingAspect {
         // UserId 및 기사Id 추출
         Long articleId = findArticleIdFromArgs(joinPoint);
         Long userId = getUserIdFromSecurity();
-        log.info("==== [Aspect Debug] ====");
-        log.info("1. ArticleID 추출결과: {}", articleId);
-        log.info("2. UserID 추출결과: {}", userId);
-        log.info("========================");
         if (userId == null || articleId == null) {
-            log.warn("[Kafka Skip] 필수 데이터 누락. UserId 또는 ArticleId가 Null입니다.");
+            log.warn("[Kafka ClickTrackingAspect] 필수 데이터 누락. UserId 또는 ArticleId가 Null입니다.");
             return joinPoint.proceed();
         }
 

@@ -119,5 +119,4 @@ public class UserServiceImpl implements  UserService{
         String nickname = dto.getNickname();
         return !userRepository.existsByNicknameIncludedDeleted(nickname);
     }
-
 }
