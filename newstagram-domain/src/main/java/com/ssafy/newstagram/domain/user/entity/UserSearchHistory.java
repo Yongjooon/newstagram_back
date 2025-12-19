@@ -26,7 +26,7 @@ public class UserSearchHistory {
     private String query;
 
     @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
     public void updateQuery(String query) {

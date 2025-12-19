@@ -417,7 +417,7 @@ public class SearchService {
     private void saveSearchHistory(Long userId, String query) {
         try {
             // 1. Try to update existing history timestamp to move it to top
-            int updated = userSearchHistoryRepository.updateCreatedAtByUserIdAndQuery(userId, query);
+            int updated = userSearchHistoryRepository.updateCreatedAtByUserIdAndQuery(userId, query, LocalDateTime.now());
 
             // 2. If not exists, save new history
             if (updated == 0) {
