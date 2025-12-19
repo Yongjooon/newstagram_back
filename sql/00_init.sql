@@ -9,7 +9,7 @@ SET search_path TO public;
 -- 1. 사용자 테이블: 사용자 계정 정보 및 선호도 임베딩 저장
 CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
-    phone_number VARCHAR(15) NOT NULL UNIQUE,
+    phone_number VARCHAR(15) UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     nickname VARCHAR(50) NOT NULL,
@@ -20,7 +20,14 @@ CREATE TABLE users (
     preference_embedding vector(1536), -- 사용자의 선호도 벡터 (이동 평균)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted BOOLEAN NOT NULL DEFAULT FALSE --ALTER TABLE users ADD COLUMN deleted BOOLEAN NOT NULL DEFAULT FALSE;
+    deleted BOOLEAN NOT NULL DEFAULT FALSE, --ALTER TABLE users ADD COLUMN deleted BOOLEAN NOT NULL DEFAULT FALSE;
+
+    CONSTRAINT chk_login_type_phone
+        CHECK (
+            (login_type = 'EMAIL' AND phone_number IS NOT NULL)
+            OR
+            (login_type = 'GOOGLE' AND phone_number IS NULL)
+        )
 );
 
 -- 2. 뉴스 카테고리: 뉴스 분류를 위한 표준 카테고리
