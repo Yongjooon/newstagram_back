@@ -35,7 +35,7 @@ public class VerificationCodeServiceImpl implements VerificationCodeService{
                 () -> new IllegalArgumentException("회원을 찾을 수 없습니다.")
         );
 
-        String key = generatePhoneVerificationKey(phoneNumber);
+        String key = generateEmailFindKey(phoneNumber);
         String code = generateCode();
         redisTemplate.opsForHash().put(key, "code", code);
         redisTemplate.opsForHash().put(key, "attempts", MAX_ATTEMPTS);
