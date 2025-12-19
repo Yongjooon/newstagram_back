@@ -8,7 +8,7 @@ public class RealtimePeriodCalculator implements PeriodCalculator {
     // 기준 시간대
 //    private static final int[] BLOCKS = {0, 6, 9, 12, 15, 18, 21};
     private static final int[] BLOCKS = {0, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23};
-    private static final int BLOCK_SIZE = 7;
+    private static final int BLOCK_SIZE = 19;
 
     static int findEndBlockIdx(int hour) {
         int idx = 0;
