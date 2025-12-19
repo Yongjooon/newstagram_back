@@ -6,6 +6,7 @@ import com.ssafy.newstagram.api.auth.model.service.AuthService;
 import com.ssafy.newstagram.api.auth.model.service.RefreshTokenService;
 import com.ssafy.newstagram.api.auth.model.service.VerificationCodeService;
 import com.ssafy.newstagram.api.common.BaseResponse;
+import com.ssafy.newstagram.api.exception.TokenException;
 import com.ssafy.newstagram.api.users.model.dto.CustomUserDetails;
 import com.ssafy.newstagram.api.users.model.service.UserService;
 import com.ssafy.newstagram.domain.user.entity.User;
@@ -345,4 +346,47 @@ public class AuthController {
         );
     }
 
+    @PostMapping("/token")
+    @Operation(
+            summary = "토큰 유효성 검사 및 재발급",
+            description = "클라이언트가 Access Token과 Refresh Token을 전달하면 다음과 같이 처리합니다.\n\n"
+        + "- Access Token이 유효한 경우 → accesstokenOK = true, 액세스 토큰 그대로 사용\n"
+        + "- Access Token이 만료된 경우 → accesstokenOK = false, Refresh Token으로 재발급된 액세스 토큰 전달\n"
+        + "- 두 토큰 모두 유효하지 않은 경우 → 401 Unauthorized 반환\n\n"
+        + "※ Authorization 헤더는 `Bearer {accessToken}` 형식이어야 합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "토큰 유효성 검사 성공"
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "토큰이 유효하지 않음 또는 인증 실패"
+            )
+    })
+    public ResponseEntity<?> validateToken(
+            @Parameter(
+                    description = "Access Token (Bearer 타입)",
+                    example = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    required = false
+            )
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @Parameter(
+                    description = "Refresh Token",
+                    example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    required = false
+            )
+            @RequestHeader(value = "refreshToken", required = false) String refreshToken
+    ){
+        TokenValidationRequestDto dto = new TokenValidationRequestDto(authorization, refreshToken);
+        TokenValidationResponseDto result = authService.validateToken(dto);
+        return ResponseEntity.status(HttpStatus.OK).body(
+                BaseResponse.success(
+                        "AUTH_200",
+                        "토큰 유효성 검사 성공",
+                        result
+                )
+        );
+    }
 }
