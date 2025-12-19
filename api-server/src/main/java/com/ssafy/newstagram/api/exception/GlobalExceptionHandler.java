@@ -87,6 +87,13 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(TokenException.class)
+    public ResponseEntity<?> handleTokenException(TokenException e){
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                BaseResponse.error("AUTH_401", e.getMessage(), null)
+        );
+    }
+
     // 모든 예외를 잡는 가장 상위 핸들러
     @ExceptionHandler(Exception.class)
     public ResponseEntity<BaseResponse<?>> handleException(Exception e) {

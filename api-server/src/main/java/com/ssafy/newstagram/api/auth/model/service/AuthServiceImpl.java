@@ -1,7 +1,11 @@
 package com.ssafy.newstagram.api.auth.model.service;
 
+import com.ssafy.newstagram.api.auth.jwt.JWTUtil;
 import com.ssafy.newstagram.api.auth.model.dto.PasswordResetRequestDto;
 import com.ssafy.newstagram.api.auth.model.dto.PasswordResetRequestRequestDto;
+import com.ssafy.newstagram.api.auth.model.dto.TokenValidationRequestDto;
+import com.ssafy.newstagram.api.auth.model.dto.TokenValidationResponseDto;
+import com.ssafy.newstagram.api.exception.TokenException;
 import com.ssafy.newstagram.api.users.repository.UserRepository;
 import com.ssafy.newstagram.domain.user.entity.User;
 import jakarta.transaction.Transactional;
@@ -24,6 +28,7 @@ public class AuthServiceImpl implements AuthService{
     private final EmailService emailService;
     private final RedisTemplate<String, Object> redisTemplate;
     private final PasswordEncoder passwordEncoder;
+    private final JWTUtil jwtUtil;
 
     private final String TOKEN_PREFIX = "password-reset:";
     private final long expirationMs = 3600000; // 1시간
@@ -79,6 +84,56 @@ public class AuthServiceImpl implements AuthService{
         user.updatePasswordHash(newEncoded);
 
         redisTemplate.delete(key);
+    }
+
+    @Override
+    public TokenValidationResponseDto validateToken(TokenValidationRequestDto dto) {
+        String authorization = dto.getAuthorization();
+        String refreshToken = dto.getRefreshToken();
+
+        // accessToken 유효한 경우
+        try {
+            if (authorization == null || !authorization.startsWith("Bearer ")) {
+                throw new TokenException("Authorization 헤더가 없거나 Bearer 토큰 형식이 아닙니다.");
+            }
+            String accessToken = authorization.split(" ")[1];
+            if (!jwtUtil.isExpired(accessToken)) {
+                return new TokenValidationResponseDto(accessToken, true);
+            }
+        } catch (Exception e) {
+            // 토큰 파싱 자체가 안 되는 경우 => 아래에서 refresh로 처리
+        }
+
+        // accessToken 만료 => refreshToken 검증
+        try {
+            if(refreshToken == null){
+                throw new TokenException("REFRESH_TOKEN_EMPTY");
+            }
+            if (jwtUtil.isExpired(refreshToken)) {
+                throw new TokenException("REFRESH_TOKEN_EXPIRED");
+            }
+
+            if (!"refresh".equals(jwtUtil.getType(refreshToken))) {
+                throw new TokenException("INVALID_REFRESH_TOKEN");
+            }
+
+            Long userId = jwtUtil.getUserId(refreshToken);
+            String savedRefreshToken = refreshTokenService.getRefreshToken(userId);
+
+            if (savedRefreshToken == null || !savedRefreshToken.equals(refreshToken)) {
+                throw new TokenException("INVALID_REFRESH_TOKEN");
+            }
+
+            // 3. 재발급
+            // String role = userRepository.findRoleById(userId);
+            String role = "USER";
+            String newAccessToken = jwtUtil.createAccessToken(userId, role);
+
+            return new TokenValidationResponseDto(newAccessToken, false);
+
+        } catch (Exception e) {
+            throw new TokenException("REFRESH_TOKEN_EXPIRED");
+        }
     }
 
     private String issueToken(){
