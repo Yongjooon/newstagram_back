@@ -9,6 +9,7 @@ import com.ssafy.newstagram.domain.news.entity.NewsCategory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.List;
@@ -35,6 +36,7 @@ public class SurveyService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
     public void processSurvey(Long userId, List<Long> categoryIds) {
         // 1. 카테고리 조회
         List<NewsCategory> categories = surveyNewsCategoryRepository.findAllById(categoryIds);
@@ -55,6 +57,6 @@ public class SurveyService {
         );
 
         surveyUser.setPreferenceEmbedding(vector);
-        log.info("[SurveyService] - 사용자 {} 임베딩 업데이트 완료", userId);
+        log.info("[SurveyService] - (UserId : {}) 임베딩 업데이트 완료.", userId);
     }
 }
