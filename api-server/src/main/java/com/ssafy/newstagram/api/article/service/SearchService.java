@@ -2,9 +2,9 @@ package com.ssafy.newstagram.api.article.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.newstagram.api.article.dto.ArticleDto;
-import com.ssafy.newstagram.api.article.dto.ArticleSearchProjection;
-import com.ssafy.newstagram.api.article.dto.ArticleSummaryDto;
 import com.ssafy.newstagram.api.article.dto.EmbeddingResponse;
+import jakarta.persistence.Tuple;
+import java.sql.Timestamp;
 import com.ssafy.newstagram.api.article.dto.IntentAnalysisResponse;
 import com.ssafy.newstagram.api.article.dto.SearchHistoryDto;
 import com.ssafy.newstagram.api.article.repository.ArticleRepository;
@@ -20,6 +20,7 @@ import kr.co.shineware.nlp.komoran.model.Token;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
+import org.aspectj.internal.lang.annotation.ajcITD;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
@@ -63,7 +64,7 @@ public class SearchService {
     private static final Komoran komoran = new Komoran(DEFAULT_MODEL.FULL);
 
     @Transactional
-    public List<ArticleSummaryDto> searchArticles(Long userId, String query, int limit, int page) {
+    public List<ArticleDto> searchArticles(Long userId, String query, int limit, int page) {
         // 1. Save Search History (Only for the first page)
         if (page == 0) {
             saveSearchHistory(userId, query);
@@ -76,7 +77,7 @@ public class SearchService {
     }
 
     @Cacheable(value = "search_results", key = "#query + '-' + #page + '-' + #limit + '-' + #threshold")
-    public List<ArticleSummaryDto> getCachedSearchResults(String query, int limit, int page, double threshold) {
+    public List<ArticleDto> getCachedSearchResults(String query, int limit, int page, double threshold) {
         log.info("[Search] Original Query: {}, Page: {}", query, page);
 
         // 1. Try Local Analysis (Rule-based)
@@ -118,7 +119,7 @@ public class SearchService {
         log.info("[Search] Searching candidates with threshold: {}, limit: {}", threshold, candidateLimit);
         
         // Direct Vector Search without strict keyword filtering to support semantic search (e.g. Car -> Vehicle)
-        List<ArticleSearchProjection> articles = articleRepository.findCandidatesByEmbedding(
+        List<ArticleDto> articles = articleRepository.findCandidatesByEmbedding(
                 embeddingString, candidateLimit, categoryId, startDate, threshold);
 
         // Keyword Filtering: Ensure at least one keyword exists in title or description
@@ -127,18 +128,23 @@ public class SearchService {
                 : List.of(query.split("\\s+"));
 
         return articles.stream()
-                .filter(article -> {
-                    String title = article.getTitle() != null ? article.getTitle() : "";
-                    String description = article.getDescription() != null ? article.getDescription() : "";
+                .filter(dto -> {
+                    String title = dto.getTitle();
+                    String description = dto.getDescription();
+                    if (title == null) title = "";
+                    if (description == null) description = "";
+                    
+                    String finalTitle = title;
+                    String finalDescription = description;
+                    
                     // Check if ANY of the keywords are present
                     return filterKeywords.stream().anyMatch(keyword -> 
-                        title.contains(keyword) || description.contains(keyword)
+                        finalTitle.contains(keyword) || finalDescription.contains(keyword)
                     );
                 })
                 .sorted((a1, a2) -> a2.getPublishedAt().compareTo(a1.getPublishedAt())) // Sort by Date DESC
                 .skip((long) page * limit) // Pagination in memory
                 .limit(limit)
-                .map(this::convertToSummaryDto)
                 .collect(Collectors.toList());
     }
 
@@ -356,15 +362,19 @@ public class SearchService {
         }
     }
 
-    private ArticleSummaryDto convertToSummaryDto(ArticleSearchProjection article) {
-        return ArticleSummaryDto.builder()
-                .id(article.getId())
-                .title(article.getTitle())
-                .description(article.getDescription())
-                .url(article.getUrl())
-                .thumbnailUrl(article.getThumbnailUrl())
-                .author(article.getAuthor())
-                .publishedAt(article.getPublishedAt())
+    private ArticleDto convertToDto(Tuple tuple) {
+        Timestamp timestamp = tuple.get("publishedAt", Timestamp.class);
+        LocalDateTime publishedAt = timestamp != null ? timestamp.toLocalDateTime() : null;
+
+        return ArticleDto.builder()
+                .id(tuple.get("id", Long.class))
+                .title(tuple.get("title", String.class))
+                .content(null) // Content is excluded for performance
+                .description(tuple.get("description", String.class))
+                .url(tuple.get("url", String.class))
+                .thumbnailUrl(tuple.get("thumbnailUrl", String.class))
+                .author(tuple.get("author", String.class))
+                .publishedAt(publishedAt)
                 .build();
     }
 

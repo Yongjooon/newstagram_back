@@ -1,7 +1,6 @@
 package com.ssafy.newstagram.api.article.repository;
 
 import com.ssafy.newstagram.api.article.dto.ArticleDto;
-import com.ssafy.newstagram.api.article.dto.ArticleSearchProjection;
 import com.ssafy.newstagram.domain.news.entity.Article;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -35,8 +34,6 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
 
     List<Article> findByCategory_IdOrderByPublishedAtDesc(Long categoryId, Pageable pageable);
 
-    @Query(value = "SELECT id, title, content, description, url, thumbnail_url, author, published_at, created_at, updated_at, feed_id, category_id, sources_id, NULL as embedding FROM articles ORDER BY embedding <=> cast(:embedding as vector) LIMIT :limit", nativeQuery = true)
-    List<Article> findByEmbeddingSimilarity(@Param("embedding") String embedding, @Param("limit") int limit);
 
     @Query(value = "SELECT id, title, content, description, url, thumbnail_url, author, published_at, created_at, updated_at, feed_id, category_id, sources_id, NULL as embedding " +
             "FROM articles " +
@@ -72,7 +69,7 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
             "AND (embedding <=> cast(:embedding as vector)) < :threshold " +
             "ORDER BY embedding <=> cast(:embedding as vector) " +
             "LIMIT :limit", nativeQuery = true)
-    List<ArticleSearchProjection> findCandidatesByEmbedding(
+    List<ArticleDto> findCandidatesByEmbedding(
             @Param("embedding") String embedding,
             @Param("limit") int limit,
             @Param("categoryId") Long categoryId,

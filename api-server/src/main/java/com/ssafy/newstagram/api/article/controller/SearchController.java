@@ -1,7 +1,6 @@
 package com.ssafy.newstagram.api.article.controller;
 
 import com.ssafy.newstagram.api.article.dto.ArticleDto;
-import com.ssafy.newstagram.api.article.dto.ArticleSummaryDto;
 import com.ssafy.newstagram.api.article.dto.SearchHistoryDto;
 import com.ssafy.newstagram.api.article.dto.SearchRequest;
 import com.ssafy.newstagram.api.article.dto.UpdateSearchHistoryRequest;
@@ -26,7 +25,7 @@ public class SearchController {
 
     @Operation(summary = "시맨틱 검색", description = "형태소 분석 및 벡터 유사도 기반의 하이브리드 방식을 사용하여 기사를 검색합니다.")
     @PostMapping
-    public ResponseEntity<List<ArticleSummaryDto>> searchArticles(
+    public ResponseEntity<List<ArticleDto>> searchArticles(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody SearchRequest request) {
         
@@ -39,13 +38,13 @@ public class SearchController {
 
         Long userId = userDetails.getUserId();
 
-        List<ArticleSummaryDto> results = searchService.searchArticles(userId, query, limit, page);
+        List<ArticleDto> results = searchService.searchArticles(userId, query, limit, page);
         return ResponseEntity.ok(results);
     }
 
     @Operation(summary = "시맨틱 검색 (테스트)", description = "사용자 인증 없이 형태소 분석 및 벡터 유사도 기반의 하이브리드 방식을 사용하여 기사를 검색합니다.")
     @PostMapping("/test")
-    public ResponseEntity<List<ArticleSummaryDto>> searchArticlesTest(@RequestBody SearchRequest request) {
+    public ResponseEntity<List<ArticleDto>> searchArticlesTest(@RequestBody SearchRequest request) {
         
         String query = request.getQuery();
         Integer limit = request.getLimit();
@@ -56,7 +55,7 @@ public class SearchController {
 
         // Skip saving history and directly search
         // Test search uses strict threshold (0.8) to limit results
-        List<ArticleSummaryDto> results = searchService.getCachedSearchResults(query, limit, page, 0.80);
+        List<ArticleDto> results = searchService.getCachedSearchResults(query, limit, page, 0.80);
         return ResponseEntity.ok(results);
     }
 
