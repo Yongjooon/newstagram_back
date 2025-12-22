@@ -9,7 +9,6 @@ import lombok.Getter;
 @Getter
 public class EmailFindVerifyRequestDto {
     @Schema(description = "휴대폰번호", example = "01012345678")
-    @NotBlank
     @ValidPhoneNumber
     private String phoneNumber;
 

@@ -6,7 +6,6 @@ import com.ssafy.newstagram.api.users.validation.ValidNickname;
 import com.ssafy.newstagram.api.users.validation.ValidPassword;
 import com.ssafy.newstagram.api.users.validation.ValidPhoneNumber;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -15,7 +14,6 @@ import lombok.Getter;
 public class RegisterRequestDto {
 
     @Schema(description = "휴대폰번호", example = "01012345678")
-    @NotBlank
     @ValidPhoneNumber
     private String phoneNumber;
 
