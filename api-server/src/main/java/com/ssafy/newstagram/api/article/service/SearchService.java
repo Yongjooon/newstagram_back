@@ -95,21 +95,6 @@ public class SearchService {
                     intent.getQuery(), intent.getCategory(), intent.getDateRange());
         }
 
-        // Case 1: Category Only (No Keywords) -> Fetch Latest by Category
-        if (intent.getCategory() != null && (intent.getKeywords() == null || intent.getKeywords().isEmpty())) {
-            Long categoryId = newsCategoryRepository.findByName(intent.getCategory())
-                    .map(NewsCategory::getId)
-                    .orElse(null);
-
-            if (categoryId != null) {
-                log.info("[Search] Category-only search: {}", intent.getCategory());
-                return articleRepository.findByCategory_IdOrderByPublishedAtDesc(categoryId, PageRequest.of(page, limit))
-                        .stream()
-                        .map(this::convertToDto)
-                        .collect(Collectors.toList());
-            }
-        }
-
         // Case 2: Vector Search (Keywords exist OR Category not found)
         String searchKeywords = (intent.getQuery() != null && !intent.getQuery().isBlank()) 
                 ? intent.getQuery() 
@@ -138,7 +123,7 @@ public class SearchService {
         log.info("[Search] Searching once with threshold: {}, limit: {}, offset: {}", threshold, limit, offset);
         
         // Direct Vector Search without strict keyword filtering to support semantic search (e.g. Car -> Vehicle)
-        List<Article> articles = articleRepository.findByEmbeddingSimilarityWithFilters(
+        List<Article> articles = articleRepository.findByEmbeddingSimilarityWithFiltersSortedByDate(
                 embeddingString, limit, offset, categoryId, startDate, threshold);
 
         return articles.stream()
@@ -167,22 +152,7 @@ public class SearchService {
             for (Token token : tokenList) {
                 String morph = token.getMorph();
                 String pos = token.getPos();
-                String matchedCat = matchCategory(morph);
                 int matchedDate = matchDateRange(morph);
-                
-                // 1. 카테고리/날짜 키워드 처리
-                if (matchedCat != null) {
-                    // Generic Category Keyword -> Consume (don't add to keywords)
-                    if (isGenericCategoryKeyword(morph)) {
-                        flushChunk(cleanKeywords, currentChunk);
-                        if (category == null) category = matchedCat;
-                        continue;
-                    }
-                    
-                    // Specific Category Keyword (e.g. "야구") -> Keep as keyword AND set category
-                    if (category == null) category = matchedCat;
-                    // Fall through to be added to currentChunk
-                }
                 
                 if (matchedDate != 0) {
                     flushChunk(cleanKeywords, currentChunk); // 이전 청크 저장
@@ -213,16 +183,9 @@ public class SearchService {
         if (!komoranSuccess) {
             String[] words = query.split("\\s+");
             for (String word : words) {
-                String matchedCat = matchCategory(word);
                 int matchedDate = matchDateRange(word);
                 
-                if (matchedCat != null) {
-                    if (category == null) {
-                        category = matchedCat;
-                    } else {
-                        cleanKeywords.add(word);
-                    }
-                } else if (matchedDate != 0) {
+                if (matchedDate != 0) {
                     if (dateRange == 0) dateRange = matchedDate;
                 } else if (!isStopWord(word)) {
                     cleanKeywords.add(word);
@@ -260,88 +223,23 @@ public class SearchService {
                word.equals("은") || word.equals("는") || word.equals("의") || word.equals("에") || 
                word.equals("에서") || word.equals("로") || word.equals("으로") || word.equals("와") || 
                word.equals("과") || word.equals("도") || word.equals("만") || word.equals("나") || 
-               word.equals("이나") || word.equals("부터") || word.equals("까지") || word.equals("필요");
-    }
-
-    private boolean isGenericCategoryKeyword(String word) {
-        return word.equals("속보") || word.equals("헤드라인") || word.equals("주요") ||
-               word.equals("정치") ||
-               word.equals("경제") ||
-               word.equals("사회") ||
-               word.equals("지역") || word.equals("전국") || word.equals("지방") ||
-               word.equals("세계") || word.equals("국제") || word.equals("해외") || word.equals("글로벌") ||
-               word.equals("문화") || word.equals("생활") || word.equals("라이프") ||
-               word.equals("연예") || word.equals("방송") ||
-               word.equals("스포츠") ||
-               word.equals("날씨") || word.equals("기상") ||
-               word.equals("과학") || word.equals("기술") || word.equals("환경") || word.equals("IT") || word.equals("테크") ||
-               word.equals("건강") ||
-               word.equals("사설") || word.equals("칼럼") || word.equals("오피니언") ||
-               word.equals("인물") || word.equals("사람") ||
-               word.equals("기업") || word.equals("산업") || word.equals("비즈니스");
-    }
-    
-    private String matchCategory(String word) {
-        // 1. TOP (속보, 헤드라인)
-        if (word.equals("속보") || word.equals("헤드라인") || word.equals("주요")) return "TOP";
-        
-        // 2. POLITICS (정치)
-        if (word.equals("정치") || word.equals("국회") || word.equals("정당") || word.equals("선거") || 
-            word.equals("청와대") || word.equals("대통령") || word.equals("행정")) return "POLITICS";
-        
-        // 3. ECONOMY (경제)
-        if (word.equals("경제") || word.equals("금융") || word.equals("재테크")) return "ECONOMY";
-        
-        // 4. BUSINESS (기업, 산업)
-        if (word.equals("기업") || word.equals("산업") || word.equals("증권") || word.equals("주식") || 
-            word.equals("부동산") || word.equals("마켓") || word.equals("비즈니스")) return "BUSINESS";
-        
-        // 5. SOCIETY (사회)
-        if (word.equals("사회") || word.equals("사건") || word.equals("사고") || word.equals("교육") || 
-            word.equals("노동") || word.equals("인권")) return "SOCIETY";
-        
-        // 6. LOCAL (지역)
-        if (word.equals("지역") || word.equals("전국") || word.equals("지방") || word.equals("광주") || 
-            word.equals("부산") || word.equals("대구") || word.equals("대전") || word.equals("인천")) return "LOCAL";
-        
-        // 7. WORLD (국제)
-        if (word.equals("세계") || word.equals("국제") || word.equals("해외") || word.equals("글로벌") || 
-            word.equals("미국") || word.equals("중국") || word.equals("일본")) return "WORLD";
-        
-        // 8. NORTH_KOREA (북한)
-        if (word.equals("북한") || word.equals("남북") || word.equals("통일")) return "NORTH_KOREA";
-        
-        // 9. CULTURE_LIFE (문화, 생활)
-        if (word.equals("문화") || word.equals("생활") || word.equals("라이프") || word.equals("여행") || 
-            word.equals("요리") || word.equals("책") || word.equals("공연") || word.equals("전시")) return "CULTURE_LIFE";
-        
-        // 10. ENTERTAINMENT (연예)
-        if (word.equals("연예") || word.equals("예능") || word.equals("게임") || word.equals("영화") || 
-            word.equals("드라마") || word.equals("스타") || word.equals("방송")) return "ENTERTAINMENT";
-        
-        // 11. SPORTS (스포츠)
-        if (word.equals("스포츠") || word.equals("축구") || word.equals("야구") || word.equals("농구") || 
-            word.equals("배구") || word.equals("골프") || word.equals("올림픽")) return "SPORTS";
-        
-        // 12. WEATHER (날씨)
-        if (word.equals("날씨") || word.equals("기상") || word.equals("태풍") || word.equals("비") || 
-            word.equals("눈") || word.equals("폭염") || word.equals("한파")) return "WEATHER";
-        
-        // 13. SCIENCE_ENV (과학, 환경)
-        if (word.equals("과학") || word.equals("기술") || word.equals("환경") || word.equals("IT") || 
-            word.equals("테크") || word.equals("모바일") || word.equals("인터넷") || word.equals("통신")) return "SCIENCE_ENV";
-        
-        // 14. HEALTH (건강)
-        if (word.equals("건강") || word.equals("의료") || word.equals("병원") || word.equals("의학") || 
-            word.equals("질병") || word.equals("코로나")) return "HEALTH";
-        
-        // 15. OPINION (사설)
-        if (word.equals("사설") || word.equals("칼럼") || word.equals("오피니언") || word.equals("논설")) return "OPINION";
-        
-        // 16. PEOPLE (인물)
-        if (word.equals("인물") || word.equals("사람") || word.equals("인터뷰") || word.equals("인사")) return "PEOPLE";
-        
-        return null;
+               word.equals("이나") || word.equals("부터") || word.equals("까지") || word.equals("필요") ||
+               word.equals("및") || word.equals("또는") || word.equals("혹은") || word.equals("그리고") ||
+               word.equals("그러나") || word.equals("하지만") || word.equals("그래서") || word.equals("따라서") ||
+               word.equals("때문에") || word.equals("인하여") || word.equals("위하") || word.equals("따르") ||
+               word.equals("보이") || word.equals("보") || word.equals("드리") || word.equals("시키") ||
+               word.equals("만들") || word.equals("가지") || word.equals("갖") || word.equals("그렇") ||
+               word.equals("저렇") || word.equals("이렇") || word.equals("무슨") || word.equals("어느") ||
+               word.equals("어떤") || word.equals("누구") || word.equals("언제") || word.equals("어디") ||
+               word.equals("왜") || word.equals("어떻게") || word.equals("보도") || word.equals("속보") ||
+               word.equals("결과") || word.equals("발표") || word.equals("예정") || word.equals("계획") ||
+               word.equals("진행") || word.equals("상황") || word.equals("상태") || word.equals("문제") ||
+               word.equals("해결") || word.equals("방안") || word.equals("대책") || word.equals("이유") ||
+               word.equals("원인") || word.equals("배경") || word.equals("전망") || word.equals("분석") ||
+               word.equals("평가") || word.equals("의견") || word.equals("주장") || word.equals("생각") ||
+               word.equals("입장") || word.equals("반응") || word.equals("논란") || word.equals("의혹") ||
+               word.equals("사실") || word.equals("확인") || word.equals("공개") || word.equals("등등") ||
+               word.equals("것") || word.equals("수") || word.equals("등");
     }
 
     private int matchDateRange(String word) {
