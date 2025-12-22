@@ -11,14 +11,18 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -27,6 +31,10 @@ public class CustomSuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     private final JWTUtil jwtUtil;
     private final UserService userService;
     private final RefreshTokenService refreshTokenService;
+    private final ObjectMapper objectMapper;
+
+    @Value("${front-url}")
+    private String FRONT_URL;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
@@ -45,16 +53,25 @@ public class CustomSuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         refreshTokenService.save(userId, refreshToken);
 
-        BaseResponse<LoginResponseDto> res = BaseResponse.success(
-                "AUTH_200",
-                "로그인 성공",
-                new LoginResponseDto(accessToken, refreshToken)
-        );
+        LoginResponseDto responseDto = new LoginResponseDto(accessToken, refreshToken);
+        String targetUrl = FRONT_URL + "/user/oauth/google";
 
-        ObjectMapper objectMapper = new ObjectMapper();
-        String json = objectMapper.writeValueAsString(res);
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(targetUrl);
 
-        response.setContentType("application/json; charset=UTF-8");
-        response.getWriter().write(json);
+        Map<String, Object> params = objectMapper.convertValue(responseDto, Map.class);
+        for (Map.Entry<String, Object> entry : params.entrySet()) {
+            if (entry.getValue() != null) {
+                uriBuilder.queryParam(entry.getKey(), String.valueOf(entry.getValue()));
+            }
+        }
+
+        String redirectUrl = uriBuilder
+                .encode(StandardCharsets.UTF_8)
+                .build()
+                .toUriString();
+
+        System.out.println("redirect url: " + redirectUrl);
+
+        getRedirectStrategy().sendRedirect(request, response, redirectUrl);
     }
 }
