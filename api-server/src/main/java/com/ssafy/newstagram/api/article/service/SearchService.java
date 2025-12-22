@@ -32,6 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -61,9 +62,6 @@ public class SearchService {
     private static final String MODEL_NAME = "text-embedding-3-small";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Komoran komoran = new Komoran(DEFAULT_MODEL.FULL);
-    private static final double INITIAL_DISTANCE_THRESHOLD = 0.30;
-    private static final double MAX_DISTANCE_THRESHOLD = 0.80;
-    private static final double STEP_DISTANCE_THRESHOLD = 0.05;
 
     @Transactional
     public List<ArticleDto> searchArticles(Long userId, String query, int limit, int page) {
@@ -97,6 +95,22 @@ public class SearchService {
                     intent.getQuery(), intent.getCategory(), intent.getDateRange());
         }
 
+        // Case 1: Category Only (No Keywords) -> Fetch Latest by Category
+        if (intent.getCategory() != null && (intent.getKeywords() == null || intent.getKeywords().isEmpty())) {
+            Long categoryId = newsCategoryRepository.findByName(intent.getCategory())
+                    .map(NewsCategory::getId)
+                    .orElse(null);
+
+            if (categoryId != null) {
+                log.info("[Search] Category-only search: {}", intent.getCategory());
+                return articleRepository.findByCategory_IdOrderByPublishedAtDesc(categoryId, PageRequest.of(page, limit))
+                        .stream()
+                        .map(this::convertToDto)
+                        .collect(Collectors.toList());
+            }
+        }
+
+        // Case 2: Vector Search (Keywords exist OR Category not found)
         String searchKeywords = (intent.getQuery() != null && !intent.getQuery().isBlank()) 
                 ? intent.getQuery() 
                 : query;
@@ -119,40 +133,13 @@ public class SearchService {
         // Optimization: Single DB Query with MAX threshold and large limit
         // Instead of looping DB queries, fetch a larger candidate pool once.
         // Since results are ordered by distance, the top results are the best matches.
-        int fetchLimit = limit * 10; // Fetch plenty of candidates to handle filtering
         int offset = page * limit;
         
-        log.info("[Search] Searching once with threshold: {}, fetchLimit: {}, offset: {}", threshold, fetchLimit, offset);
+        log.info("[Search] Searching once with threshold: {}, limit: {}, offset: {}", threshold, limit, offset);
         
-        List<Article> candidates = articleRepository.findByEmbeddingSimilarityWithFilters(
-                embeddingString, fetchLimit, offset, categoryId, startDate, threshold);
-
-        List<Article> articles = new ArrayList<>();
-
-        // Filter candidates based on keywords
-        if (intent.getKeywords() != null && !intent.getKeywords().isEmpty()) {
-            List<String> requiredKeywords = intent.getKeywords();
-            for (Article candidate : candidates) {
-                if (articles.size() >= limit) break;
-                
-                String title = candidate.getTitle() != null ? candidate.getTitle() : "";
-                String content = candidate.getContent() != null ? candidate.getContent() : "";
-                String textToCheck = title + " " + content;
-                
-                // Check if at least one keyword is present
-                boolean match = requiredKeywords.stream()
-                        .anyMatch(keyword -> textToCheck.contains(keyword));
-                
-                if (match) {
-                    articles.add(candidate);
-                }
-            }
-        } else {
-            // No keywords to filter, just take top N
-            articles = candidates.stream()
-                    .limit(limit)
-                    .collect(Collectors.toList());
-        }
+        // Direct Vector Search without strict keyword filtering to support semantic search (e.g. Car -> Vehicle)
+        List<Article> articles = articleRepository.findByEmbeddingSimilarityWithFilters(
+                embeddingString, limit, offset, categoryId, startDate, threshold);
 
         return articles.stream()
                 .map(this::convertToDto)
@@ -163,7 +150,6 @@ public class SearchService {
         String category = null;
         int dateRange = 0;
         List<String> cleanKeywords = new ArrayList<>();
-        String primaryCategoryKeyword = null; // 메인 카테고리 키워드 저장
         boolean komoranSuccess = false;
 
         // 1. Komoran Analysis
@@ -189,7 +175,6 @@ public class SearchService {
                     flushChunk(cleanKeywords, currentChunk); // 이전 청크 저장
                     if (category == null) {
                         category = matchedCat;
-                        primaryCategoryKeyword = morph;
                     }
                     continue;
                 }
@@ -229,7 +214,6 @@ public class SearchService {
                 if (matchedCat != null) {
                     if (category == null) {
                         category = matchedCat;
-                        primaryCategoryKeyword = word; // 키워드 저장
                     } else {
                         cleanKeywords.add(word);
                     }
@@ -239,12 +223,6 @@ public class SearchService {
                     cleanKeywords.add(word);
                 }
             }
-        }
-        
-        // 3. 빈 쿼리 방지 로직: 모든 단어가 필터/불용어로 빠졌다면, 카테고리 키워드를 검색어로 복원
-        if (cleanKeywords.isEmpty() && primaryCategoryKeyword != null) {
-            cleanKeywords.add(primaryCategoryKeyword);
-            log.info("[Search] Query is empty after filtering. Restored category keyword: '{}'", primaryCategoryKeyword);
         }
         
         String finalQuery = cleanKeywords.isEmpty() ? query : String.join(" ", cleanKeywords);
@@ -349,6 +327,10 @@ public class SearchService {
         if (word.equals("이번주") || word.equals("주간") || word.equals("요즘") || word.equals("최근") || 
             word.equals("최신") || word.equals("일주일")) return 7;
         if (word.equals("이번달") || word.equals("월간") || word.equals("한달")) return 30;
+        if (word.equals("분기") || word.equals("3개월")) return 90;
+        if (word.equals("상반기") || word.equals("하반기") || word.equals("반기")) return 180;
+        if (word.equals("올해") || word.equals("연간") || word.equals("일년")) return 365;
+        if (word.equals("작년") || word.equals("지난해")) return 730;
         return 0;
     }
 
