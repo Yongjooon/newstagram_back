@@ -48,4 +48,6 @@ public class CustomOAuth2User implements OAuth2User {
     }
 
     public Long getUserId() { return user.getId(); }
+
+    public boolean isEmbeddingInitialized() { return user.getPreferenceEmbedding() != null; }
 }
