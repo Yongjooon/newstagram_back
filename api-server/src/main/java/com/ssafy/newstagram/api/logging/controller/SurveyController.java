@@ -1,10 +1,9 @@
-package com.ssafy.newstagram.api.survey.controller;
+package com.ssafy.newstagram.api.logging.controller;
 
 import com.ssafy.newstagram.api.common.BaseResponse;
-import com.ssafy.newstagram.api.survey.model.dto.SurveySubmitRequestDto;
-import com.ssafy.newstagram.api.survey.model.service.SurveyService;
+import com.ssafy.newstagram.api.logging.model.dto.SurveySubmitRequestDto;
+import com.ssafy.newstagram.api.logging.model.service.SurveyService;
 import com.ssafy.newstagram.api.users.model.dto.CustomUserDetails;
-import com.ssafy.newstagram.api.users.model.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +18,6 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "Survey API", description = "최초 로그인 시 콜드 스타트용 임베딩 데이터 설문")
 public class SurveyController {
 
-    private final UserService userService;
     private final SurveyService surveyService;
 
     @GetMapping("/categories")
@@ -42,8 +40,8 @@ public class SurveyController {
             summary = "설문 결과 제출",
             description = "선택한 카테고리들을 기반으로 초기 추천 벡터를 생성합니다."
     )
-    public ResponseEntity<?> submitSurvey(@RequestBody SurveySubmitRequestDto request, @AuthenticationPrincipal CustomUserDetails userDetails) {
-        surveyService.processSurvey(userDetails.getUserId(), request.getCategoryIds());
+    public ResponseEntity<?> submitSurvey(@RequestBody SurveySubmitRequestDto request) {
+        surveyService.captureSurveyLog(request.getCategoryIds());
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.success(
                         "SURVEY_200",

@@ -53,4 +53,19 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
             @Param("threshold") double threshold
     );
 
+    @Query(value = "SELECT id, title, content, description, url, thumbnail_url, author, published_at, created_at, updated_at, feed_id, category_id, sources_id, NULL as embedding " +
+            "FROM articles " +
+            "WHERE (:categoryId IS NULL OR category_id = :categoryId) " +
+            "AND (cast(:startDate as timestamp) IS NULL OR published_at >= cast(:startDate as timestamp)) " +
+            "AND (embedding <=> cast(:embedding as vector)) < :threshold " +
+            "ORDER BY embedding <=> cast(:embedding as vector) " +
+            "LIMIT :limit", nativeQuery = true)
+    List<Article> findCandidatesByEmbedding(
+            @Param("embedding") String embedding,
+            @Param("limit") int limit,
+            @Param("categoryId") Long categoryId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("threshold") double threshold
+    );
+
 }

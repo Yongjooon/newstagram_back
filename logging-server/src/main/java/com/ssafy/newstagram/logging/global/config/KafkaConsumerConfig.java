@@ -37,6 +37,24 @@ public class KafkaConsumerConfig {
                 .build();
     }
 
+    // 사용자 초기 설문 관련 토픽
+    @Bean
+    public NewTopic surveySubmitTopic() {
+        return TopicBuilder.name(KafkaTopic.Log.SURVEY_SUBMIT)
+                .partitions(3)
+                .replicas(3)
+                .build();
+    }
+
+    // 사용자 초기 설문 관련 토픽 DLT
+    @Bean
+    public NewTopic surveySubmitDltTopic() {
+        return TopicBuilder.name(KafkaTopic.Log.SURVEY_SUBMIT_DLT)
+                .partitions(3)
+                .replicas(3)
+                .build();
+    }
+
     @Bean
     public DefaultErrorHandler errorHandler(KafkaTemplate<?, ?> kafkaTemplate) {
         long interval = 30000L; // 30초마다 재시도

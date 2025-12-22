@@ -1,4 +1,4 @@
-package com.ssafy.newstagram.api.survey.domain.repository;
+package com.ssafy.newstagram.api.logging.domain.repository;
 
 import com.ssafy.newstagram.domain.news.entity.NewsCategory;
 import org.springframework.data.jpa.repository.JpaRepository;

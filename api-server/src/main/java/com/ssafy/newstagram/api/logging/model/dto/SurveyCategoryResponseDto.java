@@ -1,4 +1,4 @@
-package com.ssafy.newstagram.api.survey.model.dto;
+package com.ssafy.newstagram.api.logging.model.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

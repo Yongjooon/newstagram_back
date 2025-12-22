@@ -133,15 +133,32 @@ public class SearchService {
         // Optimization: Single DB Query with MAX threshold and large limit
         // Instead of looping DB queries, fetch a larger candidate pool once.
         // Since results are ordered by distance, the top results are the best matches.
-        int offset = page * limit;
+        // Reranking Strategy: Fetch top N relevant -> Filter -> Sort by Date
+        int candidateLimit = 200; // Fetch enough candidates to sort by date
         
-        log.info("[Search] Searching once with threshold: {}, limit: {}, offset: {}", threshold, limit, offset);
+        log.info("[Search] Searching candidates with threshold: {}, limit: {}", threshold, candidateLimit);
         
         // Direct Vector Search without strict keyword filtering to support semantic search (e.g. Car -> Vehicle)
-        List<Article> articles = articleRepository.findByEmbeddingSimilarityWithFilters(
-                embeddingString, limit, offset, categoryId, startDate, threshold);
+        List<Article> articles = articleRepository.findCandidatesByEmbedding(
+                embeddingString, candidateLimit, categoryId, startDate, threshold);
+
+        // Keyword Filtering: Ensure at least one keyword exists in title or description
+        List<String> filterKeywords = (intent.getKeywords() != null && !intent.getKeywords().isEmpty())
+                ? intent.getKeywords()
+                : List.of(query.split("\\s+"));
 
         return articles.stream()
+                .filter(article -> {
+                    String title = article.getTitle() != null ? article.getTitle() : "";
+                    String description = article.getDescription() != null ? article.getDescription() : "";
+                    // Check if ANY of the keywords are present
+                    return filterKeywords.stream().anyMatch(keyword -> 
+                        title.contains(keyword) || description.contains(keyword)
+                    );
+                })
+                .sorted((a1, a2) -> a2.getPublishedAt().compareTo(a1.getPublishedAt())) // Sort by Date DESC
+                .skip((long) page * limit) // Pagination in memory
+                .limit(limit)
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
