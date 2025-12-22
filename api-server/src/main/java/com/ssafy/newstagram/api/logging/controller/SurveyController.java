@@ -12,8 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
-
 @RestController
 @RequestMapping("/survey")
 @RequiredArgsConstructor
@@ -33,22 +31,6 @@ public class SurveyController {
                         "SURVEY_200",
                         "카테고리 목록 조회 성공",
                         surveyService.getSurveyCategories()
-                )
-        );
-    }
-
-    @GetMapping("/users/embedding")
-    @Operation(
-            summary = "사용자 Embedding 데이터 조회",
-            description = "Users 테이블의 preference_embedding 데이터가 Null값인지 체크합니다."
-    )
-    public ResponseEntity<?> getUserEmbedding(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        Map<String, Boolean> responseData = Map.of("initialized", userDetails.isEmbeddingInitialized());
-        return ResponseEntity.status(HttpStatus.OK).body(
-                BaseResponse.success(
-                        "SURVEY_200",
-                        "유저 임베딩 데이터 조회 성공",
-                        responseData
                 )
         );
     }

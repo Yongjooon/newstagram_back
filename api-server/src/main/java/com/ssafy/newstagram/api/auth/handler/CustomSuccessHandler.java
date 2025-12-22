@@ -42,6 +42,7 @@ public class CustomSuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         CustomOAuth2User customUserDetails = (CustomOAuth2User) authentication.getPrincipal();
 
         Long userId = customUserDetails.getUserId();
+        boolean isInitialized = customUserDetails.isEmbeddingInitialized();
 
         Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
         Iterator<? extends GrantedAuthority> iterator = authorities.iterator();
@@ -53,7 +54,7 @@ public class CustomSuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         refreshTokenService.save(userId, refreshToken);
 
-        LoginResponseDto responseDto = new LoginResponseDto(accessToken, refreshToken);
+        LoginResponseDto responseDto = new LoginResponseDto(accessToken, refreshToken, isInitialized);
         String targetUrl = FRONT_URL + "/user/oauth/google";
 
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(targetUrl);
