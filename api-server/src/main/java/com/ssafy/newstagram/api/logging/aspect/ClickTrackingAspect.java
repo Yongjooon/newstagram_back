@@ -51,11 +51,13 @@ public class ClickTrackingAspect {
         }
 
         // 로그 DTO 빌드
+        String sessionId = (request.getSession(false) != null) ? request.getSession(false).getId() : "unknown";
+
         UserInteractionLogsDto logDto = UserInteractionLogsDto.builder()
                 .userId(userId)
                 .articleId(articleId)
                 .interactionType("CLICK")
-                .sessionId(request.getSession().getId())
+                .sessionId(sessionId)
                 .userAgent(request.getHeader("User-Agent"))
                 .ipAddress(request.getRemoteAddr())
                 .createdAt(LocalDateTime.now())
