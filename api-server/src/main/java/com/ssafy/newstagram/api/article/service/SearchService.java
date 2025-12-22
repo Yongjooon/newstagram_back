@@ -2,6 +2,8 @@ package com.ssafy.newstagram.api.article.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.newstagram.api.article.dto.ArticleDto;
+import com.ssafy.newstagram.api.article.dto.ArticleSearchProjection;
+import com.ssafy.newstagram.api.article.dto.ArticleSummaryDto;
 import com.ssafy.newstagram.api.article.dto.EmbeddingResponse;
 import com.ssafy.newstagram.api.article.dto.IntentAnalysisResponse;
 import com.ssafy.newstagram.api.article.dto.SearchHistoryDto;
@@ -61,7 +63,7 @@ public class SearchService {
     private static final Komoran komoran = new Komoran(DEFAULT_MODEL.FULL);
 
     @Transactional
-    public List<ArticleDto> searchArticles(Long userId, String query, int limit, int page) {
+    public List<ArticleSummaryDto> searchArticles(Long userId, String query, int limit, int page) {
         // 1. Save Search History (Only for the first page)
         if (page == 0) {
             saveSearchHistory(userId, query);
@@ -74,7 +76,7 @@ public class SearchService {
     }
 
     @Cacheable(value = "search_results", key = "#query + '-' + #page + '-' + #limit + '-' + #threshold")
-    public List<ArticleDto> getCachedSearchResults(String query, int limit, int page, double threshold) {
+    public List<ArticleSummaryDto> getCachedSearchResults(String query, int limit, int page, double threshold) {
         log.info("[Search] Original Query: {}, Page: {}", query, page);
 
         // 1. Try Local Analysis (Rule-based)
@@ -97,7 +99,7 @@ public class SearchService {
                 ? intent.getQuery() 
                 : query;
         
-        List<Double> embedding = callEmbeddingApi(searchKeywords);
+        List<Double> embedding = self.getCachedEmbedding(searchKeywords);
         String embeddingString = toPgVectorLiteral(embedding); 
 
         Long categoryId = null;
@@ -116,7 +118,7 @@ public class SearchService {
         log.info("[Search] Searching candidates with threshold: {}, limit: {}", threshold, candidateLimit);
         
         // Direct Vector Search without strict keyword filtering to support semantic search (e.g. Car -> Vehicle)
-        List<Article> articles = articleRepository.findCandidatesByEmbedding(
+        List<ArticleSearchProjection> articles = articleRepository.findCandidatesByEmbedding(
                 embeddingString, candidateLimit, categoryId, startDate, threshold);
 
         // Keyword Filtering: Ensure at least one keyword exists in title or description
@@ -136,7 +138,7 @@ public class SearchService {
                 .sorted((a1, a2) -> a2.getPublishedAt().compareTo(a1.getPublishedAt())) // Sort by Date DESC
                 .skip((long) page * limit) // Pagination in memory
                 .limit(limit)
-                .map(this::convertToDto)
+                .map(this::convertToSummaryDto)
                 .collect(Collectors.toList());
     }
 
@@ -277,7 +279,8 @@ public class SearchService {
         return "[" + inner + "]";
     }
 
-    private List<Double> callEmbeddingApi(String inputText) {
+    @Cacheable(value = "keyword_embedding", key = "#inputText")
+    public List<Double> getCachedEmbedding(String inputText) {
         if (inputText == null || inputText.isBlank()) {
             throw new IllegalArgumentException("Embedding input text must not be empty");
         }
@@ -351,6 +354,18 @@ public class SearchService {
             log.error("Failed to save search history for user: {}", userId, e);
             // Do not fail the search if history saving fails
         }
+    }
+
+    private ArticleSummaryDto convertToSummaryDto(ArticleSearchProjection article) {
+        return ArticleSummaryDto.builder()
+                .id(article.getId())
+                .title(article.getTitle())
+                .description(article.getDescription())
+                .url(article.getUrl())
+                .thumbnailUrl(article.getThumbnailUrl())
+                .author(article.getAuthor())
+                .publishedAt(article.getPublishedAt())
+                .build();
     }
 
     private ArticleDto convertToDto(Article article) {

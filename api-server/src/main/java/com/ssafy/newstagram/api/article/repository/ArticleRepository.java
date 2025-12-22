@@ -1,6 +1,7 @@
 package com.ssafy.newstagram.api.article.repository;
 
 import com.ssafy.newstagram.api.article.dto.ArticleDto;
+import com.ssafy.newstagram.api.article.dto.ArticleSearchProjection;
 import com.ssafy.newstagram.domain.news.entity.Article;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -53,7 +54,7 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
             @Param("threshold") double threshold
     );
 
-    @Query(value = "SELECT id, title, content, description, url, thumbnail_url, author, published_at, created_at, updated_at, feed_id, category_id, sources_id, NULL as embedding " +
+    @Query(value = "SELECT id, title, description, url, thumbnail_url as thumbnailUrl, author, published_at as publishedAt " +
             "FROM articles " +
             "WHERE (cast(:startDate as timestamp) IS NULL OR published_at >= cast(:startDate as timestamp)) " +
             "ORDER BY embedding <=> cast(:embedding as vector) " +
@@ -71,7 +72,7 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
             "AND (embedding <=> cast(:embedding as vector)) < :threshold " +
             "ORDER BY embedding <=> cast(:embedding as vector) " +
             "LIMIT :limit", nativeQuery = true)
-    List<Article> findCandidatesByEmbedding(
+    List<ArticleSearchProjection> findCandidatesByEmbedding(
             @Param("embedding") String embedding,
             @Param("limit") int limit,
             @Param("categoryId") Long categoryId,
