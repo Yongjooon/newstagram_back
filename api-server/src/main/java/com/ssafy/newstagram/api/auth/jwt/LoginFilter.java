@@ -60,8 +60,6 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         CustomUserDetails customUserDetails = (CustomUserDetails) authResult.getPrincipal();
         Long userId = customUserDetails.getUserId();
 
-        boolean isInitialized = customUserDetails.isEmbeddingInitialized();
-
         Collection<? extends GrantedAuthority> authorities = authResult.getAuthorities();
         Iterator<? extends GrantedAuthority> iterator = authorities.iterator();
         GrantedAuthority auth = iterator.next();
@@ -76,7 +74,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         BaseResponse<LoginResponseDto> res = BaseResponse.success(
                 "AUTH_200",
                 "로그인 성공",
-                new LoginResponseDto(accessToken, refreshToken, isInitialized)
+                new LoginResponseDto(accessToken, refreshToken)
         );
 
         ObjectMapper objectMapper = new ObjectMapper();
