@@ -111,7 +111,7 @@ public class SearchService {
         // Instead of looping DB queries, fetch a larger candidate pool once.
         // Since results are ordered by distance, the top results are the best matches.
         // Reranking Strategy: Fetch top N relevant -> Filter -> Sort by Date
-        int candidateLimit = 700; // Fetch enough candidates to sort by date
+        int candidateLimit = 400; // Fetch enough candidates to sort by date
         
         log.info("[Search] Searching candidates with threshold: {}, limit: {}", threshold, candidateLimit);
         
