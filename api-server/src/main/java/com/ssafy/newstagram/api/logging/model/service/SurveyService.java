@@ -1,9 +1,9 @@
-package com.ssafy.newstagram.api.survey.model.service;
+package com.ssafy.newstagram.api.logging.model.service;
 
 import com.ssafy.newstagram.api.survey.client.SurveyEmbeddingClient;
 import com.ssafy.newstagram.api.survey.domain.User;
 import com.ssafy.newstagram.api.survey.domain.repository.SurveyUserRepository;
-import com.ssafy.newstagram.api.survey.model.dto.SurveyCategoryResponseDto;
+import com.ssafy.newstagram.api.logging.model.dto.SurveyCategoryResponseDto;
 import com.ssafy.newstagram.api.survey.domain.repository.SurveyNewsCategoryRepository;
 import com.ssafy.newstagram.domain.news.entity.NewsCategory;
 import lombok.RequiredArgsConstructor;

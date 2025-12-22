@@ -1,8 +1,8 @@
-package com.ssafy.newstagram.api.survey.controller;
+package com.ssafy.newstagram.api.logging.controller;
 
 import com.ssafy.newstagram.api.common.BaseResponse;
-import com.ssafy.newstagram.api.survey.model.dto.SurveySubmitRequestDto;
-import com.ssafy.newstagram.api.survey.model.service.SurveyService;
+import com.ssafy.newstagram.api.logging.model.dto.SurveySubmitRequestDto;
+import com.ssafy.newstagram.api.logging.model.service.SurveyService;
 import com.ssafy.newstagram.api.users.model.dto.CustomUserDetails;
 import com.ssafy.newstagram.api.users.model.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
