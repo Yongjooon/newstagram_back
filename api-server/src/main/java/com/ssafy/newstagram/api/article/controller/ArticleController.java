@@ -3,10 +3,15 @@ package com.ssafy.newstagram.api.article.controller;
 import com.ssafy.newstagram.api.article.dto.ArticleDto;
 import com.ssafy.newstagram.api.article.dto.HotIssueResponse;
 import com.ssafy.newstagram.api.article.service.ArticleService;
+import com.ssafy.newstagram.api.article.service.HomeIssueService;
 import com.ssafy.newstagram.api.article.service.HotIssueService;
+import com.ssafy.newstagram.api.article.util.Constants;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 
 @RestController
@@ -16,6 +21,7 @@ public class ArticleController {
 
     private final ArticleService articleService;
     private final HotIssueService hotIssueService;
+    private final HomeIssueService homeIssueService;
     private static final int GROUP_SIZE = 10;
     private static final int LIMIT_COUNT = 5;
 
@@ -50,4 +56,9 @@ public class ArticleController {
         );
     }
 
+    @GetMapping("/home-issues")
+    public List<ArticleDto> getHomeIssue() {
+        String vector = Constants.HOME_VECTOR;
+        return homeIssueService.findByEmbeddingSimilarity(vector, 50, LocalDateTime.now().minusDays(3));
+    }
 }
