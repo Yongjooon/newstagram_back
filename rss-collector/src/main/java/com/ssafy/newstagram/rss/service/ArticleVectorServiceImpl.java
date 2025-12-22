@@ -29,11 +29,16 @@ public class ArticleVectorServiceImpl implements ArticleVectorService {
     private String gmsApiBaseUrl;
     @Value("${gms.api.key}")
     private String gmsApiKey;
+
     private static final String MODEL_NAME = "text-embedding-3-large";
     private static final int EMBEDDING_DIMENSIONS = 1536;
 
-   //한번에 묶어 보낼 기사 개수
-    private static final int EMBEDDING_BATCH_SIZE = 128;
+    // 본문이 너무 길어질 때 비용/토큰 폭증 방지
+    private static final int MAX_CONTENT_CHARS = 6000;
+
+    // 한번에 묶어 보낼 기사 개수
+    //private static final int EMBEDDING_BATCH_SIZE = 128;
+    private static final int EMBEDDING_BATCH_SIZE = 50;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -99,10 +104,10 @@ public class ArticleVectorServiceImpl implements ArticleVectorService {
                         log.warn("[Embedding] DB에 저장 실패, articleId={}", article.getId());
                     }
                 }
-            }catch(GmsEmbeddingException e){
+            } catch(GmsEmbeddingException e){
                 hasGmsError = true;
                 log.error("[Embedding] GMS 호출 에러 (batch), sourceId={}, message={}", sourceId, e.getMessage(), e);
-            }catch(Exception e){
+            } catch(Exception e){
                 log.error("[Embedding] 처리중 에러 (batch), sourceId={}, message={}", sourceId, e.getMessage(), e);
             }
         }
@@ -114,50 +119,70 @@ public class ArticleVectorServiceImpl implements ArticleVectorService {
         return new VectorizeResult(sourceId, targets.size(), successCount, hasGmsError);
     }
 
-
-    //기사 제목 정규화
+    // 기사 제목 정규화
     private String nomalizeTitle(String rawTitle){
         if (rawTitle == null){
             return "";
         }
         String normalized = rawTitle;
 
-        //[]태그 제거
+        // []태그 제거
         normalized = normalized.replaceAll("^\\s*\\[[^]]{1,15}\\]\\s*", "");
         normalized = normalized.replaceAll("\\s*\\[[^]]{1,15}\\]\\s*", " ");
 
-        //() 제거
+        // () 제거
         normalized = normalized.replaceAll("\\s*\\([^)]{1,15}\\)\\s*$", "");
 
-        //-~~기사 제거
+        // -~~기사 제거
         normalized = normalized.replaceAll("\\s*-\\s*[\\p{L}\\p{N}가-힣·\\s]{1,20}$", "");
 
-        //공백 제거
+        // 공백 제거
         normalized = normalized.replaceAll("\\s{2,}", " ").trim();
 
         return normalized;
     }
 
+    /**
+     * 변경 포인트:
+     * - title(정규화) + content(원문) 결합해서 임베딩 입력 생성
+     * - content가 비어있으면 title만 사용
+     * - content 길이 제한 적용
+     */
     private String buildEmbeddingInput(Article article){
-        String title = article.getTitle();
-        if(title == null || title.isBlank()){
+        String title = safe(article.getTitle());
+        if (title.isBlank()){
             return "";
         }
-        String normalized = nomalizeTitle(title);
 
-        if (!title.equals(normalized)) {
-            log.debug("[Embedding] title 정규화: '{}' -> '{}'", title, normalized);
+        String normalizedTitle = nomalizeTitle(title);
+        if (!title.equals(normalizedTitle)) {
+            log.debug("[Embedding] title 정규화: '{}' -> '{}'", title, normalizedTitle);
         }
 
-        return normalized;
+        String content = safe(article.getContent());
+
+        // content가 없으면 title만 임베딩
+        if (content.isBlank()) {
+            return normalizedTitle;
+        }
+
+        // content 길이 제한 (비용/토큰 방지)
+        if (content.length() > MAX_CONTENT_CHARS) {
+            content = content.substring(0, MAX_CONTENT_CHARS);
+        }
+
+        // 결합 텍스트
+        return "TITLE: " + normalizedTitle + "\n\nCONTENT: " + content;
     }
 
+    private String safe(String s) {
+        return s == null ? "" : s.trim();
+    }
 
     private List<Double> callEmbeddingApi(String inputText) {
         List<List<Double>> result = callEmbeddingApiBatch(List.of(inputText));
         return result.get(0);
     }
-
 
     private List<List<Double>> callEmbeddingApiBatch(List<String> inputTexts) {
         if (inputTexts == null || inputTexts.isEmpty()) {
@@ -239,8 +264,6 @@ public class ArticleVectorServiceImpl implements ArticleVectorService {
                 .collect(Collectors.toList());
     }
 
-
-
     private String toPgVectorLiteral(List<Double> embedding){
         String inner = embedding.stream()
                 .map(d -> String.format(Locale.US, "%.6f", d))
@@ -269,5 +292,4 @@ public class ArticleVectorServiceImpl implements ArticleVectorService {
                 (gmsApiKey == null || gmsApiKey.isBlank()),
                 preview);
     }
-
 }

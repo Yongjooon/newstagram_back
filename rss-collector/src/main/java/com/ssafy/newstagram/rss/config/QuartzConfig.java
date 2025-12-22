@@ -21,27 +21,13 @@ public class QuartzConfig {
     @Bean
     public Trigger rssJobTrigger(JobDetail rssJobDetail){
         CronScheduleBuilder scheduleBuilder = CronScheduleBuilder
-//                .cronSchedule("0 0 0,6,9,12,15,18,21 * * ?")
-                .cronSchedule("0 0 6-23/1 * * ?")
+                .cronSchedule("0 0 0,6,9,12,15,18,21 * * ?")
                 .inTimeZone(java.util.TimeZone.getTimeZone("Asia/Seoul"));
 
         return TriggerBuilder.newTrigger()
                 .forJob(rssJobDetail)
                 .withIdentity("rssBatchTrigger")
                 .withSchedule(scheduleBuilder)
-                .build();
+                .build(); 
     }
-    @Bean
-    public Trigger rssJobTriggerMidnight(JobDetail rssJobDetail){
-        CronScheduleBuilder scheduleBuilder = CronScheduleBuilder
-                .cronSchedule("0 0 0 * * ?")
-                .inTimeZone(java.util.TimeZone.getTimeZone("Asia/Seoul"));
-
-        return TriggerBuilder.newTrigger()
-                .forJob(rssJobDetail)
-                .withIdentity("rssBatchTriggerMidnight")
-                .withSchedule(scheduleBuilder)
-                .build();
-    }
-
 }
