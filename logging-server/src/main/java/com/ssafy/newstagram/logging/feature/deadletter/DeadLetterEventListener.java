@@ -17,6 +17,6 @@ public class DeadLetterEventListener {
     }
 
     public void logErrorMsg(String topic, String msg) {
-        log.error("[Kafka] {} - 모든 재시도 실패. Dead Letter 수신: {}",KafkaTopic.Log.INTERACTION_DLT, msg);
+        log.error("[Kafka] {} - 모든 재시도 실패. Dead Letter 수신: {}",topic, msg);
     }
 }
