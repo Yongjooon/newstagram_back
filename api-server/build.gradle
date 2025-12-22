@@ -16,7 +16,7 @@ dependencies {
 
     // Redis for Session & Cache
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-    implementation 'org.springframework.session:spring-session-data-redis'
+    // implementation 'org.springframework.session:spring-session-data-redis'
 
     // OpenFeign for Inter-service Communication
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'

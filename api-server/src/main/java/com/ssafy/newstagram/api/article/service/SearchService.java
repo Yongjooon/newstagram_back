@@ -170,13 +170,18 @@ public class SearchService {
                 String matchedCat = matchCategory(morph);
                 int matchedDate = matchDateRange(morph);
                 
-                // 1. 카테고리/날짜 키워드 처리 (임베딩에서 제외)
+                // 1. 카테고리/날짜 키워드 처리
                 if (matchedCat != null) {
-                    flushChunk(cleanKeywords, currentChunk); // 이전 청크 저장
-                    if (category == null) {
-                        category = matchedCat;
+                    // Generic Category Keyword -> Consume (don't add to keywords)
+                    if (isGenericCategoryKeyword(morph)) {
+                        flushChunk(cleanKeywords, currentChunk);
+                        if (category == null) category = matchedCat;
+                        continue;
                     }
-                    continue;
+                    
+                    // Specific Category Keyword (e.g. "야구") -> Keep as keyword AND set category
+                    if (category == null) category = matchedCat;
+                    // Fall through to be added to currentChunk
                 }
                 
                 if (matchedDate != 0) {
@@ -256,7 +261,25 @@ public class SearchService {
                word.equals("에서") || word.equals("로") || word.equals("으로") || word.equals("와") || 
                word.equals("과") || word.equals("도") || word.equals("만") || word.equals("나") || 
                word.equals("이나") || word.equals("부터") || word.equals("까지") || word.equals("필요");
-    }    
+    }
+
+    private boolean isGenericCategoryKeyword(String word) {
+        return word.equals("속보") || word.equals("헤드라인") || word.equals("주요") ||
+               word.equals("정치") ||
+               word.equals("경제") ||
+               word.equals("사회") ||
+               word.equals("지역") || word.equals("전국") || word.equals("지방") ||
+               word.equals("세계") || word.equals("국제") || word.equals("해외") || word.equals("글로벌") ||
+               word.equals("문화") || word.equals("생활") || word.equals("라이프") ||
+               word.equals("연예") || word.equals("방송") ||
+               word.equals("스포츠") ||
+               word.equals("날씨") || word.equals("기상") ||
+               word.equals("과학") || word.equals("기술") || word.equals("환경") || word.equals("IT") || word.equals("테크") ||
+               word.equals("건강") ||
+               word.equals("사설") || word.equals("칼럼") || word.equals("오피니언") ||
+               word.equals("인물") || word.equals("사람") ||
+               word.equals("기업") || word.equals("산업") || word.equals("비즈니스");
+    }
     
     private String matchCategory(String word) {
         // 1. TOP (속보, 헤드라인)
