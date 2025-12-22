@@ -53,8 +53,10 @@ public class RssBatchQuartzJob implements Job {
             DayOfWeek dayOfWeek = firedAt.getDayOfWeek();
 
             // REALTIME
-            log.info("[Quartz] 클러스터링(REALTIME) 비동기 제출");
-            clusteringOrchestratorService.runRealtime();
+            if(hour == 6 || hour == 9 || hour == 12 || hour == 15 || hour == 18 || hour == 21 || hour == 0) {
+                log.info("[Quartz] 클러스터링(REALTIME) 비동기 제출");
+                clusteringOrchestratorService.runRealtime();
+            }
 
             // DAILY
             if (hour == 0) {
