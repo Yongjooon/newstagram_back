@@ -53,7 +53,7 @@ public class CustomSuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         refreshTokenService.save(userId, refreshToken);
 
-        LoginResponseDto responseDto = new LoginResponseDto(accessToken, refreshToken);
+        LoginResponseDto responseDto = new LoginResponseDto(accessToken, refreshToken, role);
         String targetUrl = FRONT_URL + "/user/oauth/google";
 
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(targetUrl);

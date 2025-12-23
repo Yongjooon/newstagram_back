@@ -2,15 +2,17 @@ package com.ssafy.newstagram.api.users.validation;
 
 import jakarta.validation.Constraint;
 import jakarta.validation.Payload;
-
+import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-@Constraint(validatedBy = EmailFindCodeValidator.class)
+@Constraint(validatedBy = NicknameValidator.class)
+@Target({ElementType.FIELD, ElementType.PARAMETER}) // 2. 필드와 파라미터에 사용 가능
 @Retention(RetentionPolicy.RUNTIME)
-public @interface EmailFindCode {
+public @interface ValidNickname {
 
-    String message() default "인증번호는 6자리 숫자입니다.";
+    String message() default "유효하지 않은 닉네임입니다.";
 
     Class<?>[] groups() default {};
 

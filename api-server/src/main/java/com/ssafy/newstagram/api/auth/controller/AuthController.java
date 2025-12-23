@@ -109,7 +109,7 @@ public class AuthController {
                 BaseResponse.success(
                         "AUTH_200",
                         "토큰 재발급 성공",
-                        new LoginResponseDto(newAccessToken, newRefreshToken)
+                        new LoginResponseDto(newAccessToken, newRefreshToken, user.getRole())
                 )
         );
     }

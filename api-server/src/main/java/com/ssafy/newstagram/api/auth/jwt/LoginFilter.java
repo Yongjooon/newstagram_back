@@ -74,7 +74,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         BaseResponse<LoginResponseDto> res = BaseResponse.success(
                 "AUTH_200",
                 "로그인 성공",
-                new LoginResponseDto(accessToken, refreshToken)
+                new LoginResponseDto(accessToken, refreshToken, role)
         );
 
         ObjectMapper objectMapper = new ObjectMapper();
