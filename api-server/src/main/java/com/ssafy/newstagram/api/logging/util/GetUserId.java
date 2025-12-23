@@ -25,13 +25,13 @@ public class GetUserId {
                 try {
                     return Long.parseLong((String) principal);
                 } catch (NumberFormatException e) {
-                    log.warn("[UserId Extraction] ID 파싱 실패 - 입력값: '{}' (Type: String)", principal);
+                    log.error("[UserId Extraction] ID 파싱 실패 - enterData={} (Type: String)", principal);
                     return null;
                 }
             }
 
         } catch (Exception e) {
-            log.error("[UserId Extraction] 알 수 없는 에러 발생 - Authentication: {}", SecurityContextHolder.getContext().getAuthentication(), e);
+            log.error("[UserId Extraction] 알 수 없는 에러 발생 - authentication={}", SecurityContextHolder.getContext().getAuthentication(), e);
         }
 
         return null;

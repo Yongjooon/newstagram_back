@@ -9,6 +9,6 @@ import org.springframework.stereotype.Service;
 public class LogService {
     @CollectLog
     public void captureClickLog(Long articleId) {
-        log.info("[LogService] - Article Click API (기사 ID: {})", articleId);
+        log.info("[Service] Kafka Log Article Click API - articleId={}", articleId);
     }
 }

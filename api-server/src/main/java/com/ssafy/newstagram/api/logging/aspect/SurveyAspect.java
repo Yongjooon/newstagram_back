@@ -38,7 +38,7 @@ public class SurveyAspect {
         Long userId = GetUserId.getUserIdFromSecurity();
         List<Long> categoryIds = findCategoryIdsFromArgs(joinPoint);
         if(userId == null || categoryIds.isEmpty()) {
-            log.warn("[Kafka ClickTrackingAspect] 필수 데이터 누락. UserId 또는 CategoryIds가 Null입니다.");
+            log.warn("[Kafka] ClickTrackingAspect 필수 데이터 누락 - UserId 또는 CategoryIds가 Null입니다.");
             return joinPoint.proceed();
         }
 
@@ -57,7 +57,7 @@ public class SurveyAspect {
             String jsonMessage = objectMapper.writeValueAsString(submitDto);
             producerService.sendMessage(KafkaTopic.Log.SURVEY_SUBMIT, jsonMessage);
         } catch (Exception e) {
-            log.error("[Kafka Error] 로그 전송 실패 - 위치: {}, UserID: {}, CategoryIds: {}, 에러메시지: {}", methodName, userId, categoryIds, e.getMessage(), e);
+            log.error("[Kafka] 로그 전송 실패 - location={} userId={} categoryIds={}, errorMessage={}", methodName, userId, categoryIds, e.getMessage(), e);
         }
 
         return joinPoint.proceed();

@@ -46,7 +46,7 @@ public class ClickTrackingAspect {
         Long articleId = findArticleIdFromArgs(joinPoint);
         Long userId = getUserIdFromSecurity();
         if (userId == null || articleId == null) {
-            log.warn("[Kafka ClickTrackingAspect] 필수 데이터 누락. UserId 또는 ArticleId가 Null입니다.");
+            log.warn("[Kafka] ClickTrackingAspect 필수 데이터 누락 - UserId 또는 ArticleId가 Null입니다.");
             return joinPoint.proceed();
         }
 
@@ -68,7 +68,7 @@ public class ClickTrackingAspect {
             String jsonMessage = objectMapper.writeValueAsString(logDto);
             producerService.sendMessage(KafkaTopic.Log.INTERACTION, jsonMessage);
         } catch(Exception e) {
-            log.error("[Kafka Error] 로그 전송 실패 - 위치: {}, UserID: {}, ArticleID: {}, IP: {}, 에러메시지: {}", methodName, userId, articleId, request.getRemoteAddr(), e.getMessage(), e);
+            log.error("[Kafka] 로그 전송 실패 - location={} userId={} articleId={} ip={} errorMessage={}", methodName, userId, articleId, request.getRemoteAddr(), e.getMessage(), e);
         }
 
         // 기존 메서드 실행
@@ -96,13 +96,13 @@ public class ClickTrackingAspect {
                 try {
                     return Long.parseLong((String) principal);
                 } catch (NumberFormatException e) {
-                    log.warn("[UserId Extraction] ID 파싱 실패 - 입력값: '{}' (Type: String)", principal);
+                    log.error("[UserId Extraction] ID 파싱 실패 - enterData={} (Type: String)", principal);
                     return null;
                 }
             }
 
         } catch (Exception e) {
-            log.error("[UserId Extraction] 알 수 없는 에러 발생 - Authentication: {}", SecurityContextHolder.getContext().getAuthentication(), e);
+            log.error("[UserId Extraction] 알 수 없는 에러 발생 - authentication={}", SecurityContextHolder.getContext().getAuthentication(), e);
         }
 
         return null;

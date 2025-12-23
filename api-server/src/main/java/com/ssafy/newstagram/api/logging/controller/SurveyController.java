@@ -21,7 +21,6 @@ import java.util.Map;
 @RequestMapping("/survey")
 @RequiredArgsConstructor
 @Tag(name = "Survey API", description = "최초 로그인 시 콜드 스타트용 임베딩 데이터 설문")
-@Slf4j
 public class SurveyController {
 
     private final SurveyService surveyService;

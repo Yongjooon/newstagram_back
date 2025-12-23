@@ -26,7 +26,7 @@ public class ArticleClickConsumer {
                 userPreferenceService.updateUserPreference(logDto.getUserId());
             }
         } catch(Exception e) {
-            log.error("[Kafka] ArticleClickConsumer - 로그 소비 중 에러 발생 : {}", message, e);
+            log.error("[Kafka] ArticleClickConsumer 로그 소비 중 에러 발생 - message={}", message, e);
         }
     }
 }

@@ -33,7 +33,7 @@ public class SurveySubmitConsumer {
             List<Long> categoryIds = logDto.getCategoryIds();
             List<Article> selectedArticles = articleRepository.findTop2ArticlesByCategoryIds(categoryIds);
             if(selectedArticles.isEmpty()) {
-                log.warn("[Kafka] SurveySubmitConsumer - 조회된 기사가 없습니다. (userId: {})", logDto.getUserId());
+                log.warn("[Kafka] SurveySubmitConsumer - 조회된 기사가 없습니다. userId={}", logDto.getUserId());
                 return;
             }
 
@@ -52,9 +52,9 @@ public class SurveySubmitConsumer {
             if (logDto.getUserId() != null) {
                 userPreferenceService.updateUserPreference(logDto.getUserId());
             }
-            log.info("[Kafka] SurveySubmitConsumer - UserId {}의 초기 인터랙션 로그 {}건 저장 완료", logDto.getUserId(), interactionLogs.size());
+            log.info("[Kafka] SurveySubmitConsumer - 초기 인터랙션 로그 저장 완료 userId={} logsSize={}", logDto.getUserId(), interactionLogs.size());
         } catch(Exception e) {
-            log.error("[Kafka] SurveySubmitConsumer - 로그 소비 중 에러 발생 : {}", message, e);
+            log.error("[Kafka] SurveySubmitConsumer - 로그 소비 중 에러 발생  message={}", message, e);
         }
     }
 }

@@ -46,5 +46,5 @@ public class SurveyService {
     }
 
     @SurveyLog
-    public void captureSurveyLog(List<Long> categoryIds) {log.info("[LogService] - Survey Submit API (categoryIds : {})", categoryIds);}
+    public void captureSurveyLog(List<Long> categoryIds) {log.info("[Service] Kafka Log Survey Submit API - categoryIds={}", categoryIds);}
 }
