@@ -420,7 +420,6 @@ public class SearchService {
                     
                     String finalCode = cleanCode;
                     newsCategoryRepository.findByName(finalCode).ifPresent(category -> categoryIds.add(category.getId()));
-                    categoryIds.add((long) 1);
                 }
                 return categoryIds;
             }
