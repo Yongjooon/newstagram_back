@@ -3,13 +3,17 @@ package com.ssafy.newstagram.api.config;
 import com.ssafy.newstagram.api.auth.handler.CustomSuccessHandler;
 import com.ssafy.newstagram.api.auth.jwt.JWTFilter;
 import com.ssafy.newstagram.api.auth.jwt.JWTUtil;
+import com.ssafy.newstagram.api.auth.jwt.JwtAuthenticationEntryPoint;
 import com.ssafy.newstagram.api.auth.jwt.LoginFilter;
 import com.ssafy.newstagram.api.auth.model.service.CustomOAuth2UserService;
 import com.ssafy.newstagram.api.auth.model.service.RefreshTokenService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -22,6 +26,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 
 import java.util.Collections;
 
+@Slf4j
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -32,6 +37,10 @@ public class SecurityConfig {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final CustomSuccessHandler customSuccessHandler;
     private final RefreshTokenService refreshTokenService;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+
+    @Value("${front-url}")
+    private String frontendUrl;
 
     @Bean
     public AuthenticationManager authenticationManager() throws Exception {
@@ -40,6 +49,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        log.info("보안 필터 체인 구성 시작");
 
         AuthenticationManager authManager = authenticationManager();
 
@@ -71,15 +81,34 @@ public class SecurityConfig {
                 }));
 
         http
-            .authorizeHttpRequests(auth -> auth
-//                .requestMatchers("/", "/signup", "/login").permitAll()
-//                .anyRequest().authenticated()
-                .anyRequest().permitAll()  // 개발 중이므로 모든 요청 허용
-            )
-            .csrf(csrf -> csrf.disable())  // 개발 중이므로 CSRF 비활성화
+            .authorizeHttpRequests(auth -> {
+                log.debug("URL 기반 보안 설정 구성");
+                auth
+//                        .requestMatchers( // todo: public api 싹싹 추가하기
+//                    "/",
+//                                "/signup",
+//                                "/login",
+//                                "/favicon.ico",
+//                                "/swagger-ui/**"
+//                    ).permitAll()
+                    .requestMatchers("/users/me/**").authenticated()
+//                    .requestMatchers(HttpMethod.POST, "").hasAuthority("ADMIN")
+//                    .anyRequest().authenticated()
+                    .anyRequest().permitAll();  // 개발 중이므로 나머지 모든 요청 허용
+                log.debug("URL 보안 설정 완료");
+            })
+            .csrf(csrf -> {
+                log.debug("CSRF 보호 비활성화");
+                csrf.disable(); // 개발 중이므로 CSRF 비활성화
+            })
             .headers(headers -> headers
                 .frameOptions(frame -> frame.sameOrigin())  // H2 Console 등을 위해
             );
+
+        http
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                );
 
         // oauth2
         http.oauth2Login(oauth2 ->
@@ -94,7 +123,8 @@ public class SecurityConfig {
 
         http.addFilterAfter(jwtFilter, LoginFilter.class);
         http.addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class);
-        
+
+        log.info("보안 필터 체인 구성 완료");
         return http.build();
     }
 }

@@ -4,6 +4,7 @@ import com.ssafy.newstagram.api.common.BaseResponse;
 import com.ssafy.newstagram.api.common.ErrorDetail;
 import io.jsonwebtoken.JwtException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -11,7 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.util.Optional;
+import java.util.Objects;
 
 @Slf4j
 @RestControllerAdvice
@@ -36,9 +37,10 @@ public class GlobalExceptionHandler {
         String errorMessage = e.getBindingResult()
                 .getFieldErrors()
                 .stream()
-                .map(fieldError -> fieldError.getField() + ": " + fieldError.getDefaultMessage())
+                .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                .filter(Objects::nonNull)
                 .findFirst()
-                .orElse("유효성 검사 실패");
+                .orElse("입력값이 유효하지 않은 형식입니다.");
 
         ErrorDetail errorDetail = ErrorDetail.builder()
                 .type("VALIDATION_ERROR")

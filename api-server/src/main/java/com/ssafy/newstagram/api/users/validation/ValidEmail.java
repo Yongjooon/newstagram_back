@@ -10,10 +10,10 @@ import java.lang.annotation.Target;
 
 @Target({ElementType.FIELD, ElementType.PARAMETER})
 @Retention(RetentionPolicy.RUNTIME)
-@Constraint(validatedBy = PhoneNumberValidator.class)
-public @interface ValidPhoneNumber {
+@Constraint(validatedBy = EmailValidator.class)
+public @interface ValidEmail {
 
-    String message() default "유효하지 않은 휴대폰 번호 형식입니다.";
+    String message() default "유효하지 않은 이메일 형식입니다.";
 
     Class<?>[] groups() default {};
 
