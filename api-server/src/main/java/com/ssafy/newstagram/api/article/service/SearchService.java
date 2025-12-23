@@ -99,7 +99,7 @@ public class SearchService {
                 : query;
         
         long embeddingStartTime = System.currentTimeMillis();
-        List<Double> embedding = callEmbeddingApi(searchKeywords);
+        List<Double> embedding = self.getCachedEmbedding(searchKeywords);
         long embeddingEndTime = System.currentTimeMillis();
         log.info("[Search] Embedding API took {} ms", (embeddingEndTime - embeddingStartTime));
 
