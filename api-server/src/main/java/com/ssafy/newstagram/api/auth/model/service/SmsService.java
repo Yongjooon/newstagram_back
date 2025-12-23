@@ -1,6 +1,7 @@
 package com.ssafy.newstagram.api.auth.model.service;
 
 import com.solapi.sdk.message.exception.SolapiMessageNotReceivedException;
+import com.solapi.sdk.message.exception.SolapiUnknownException;
 import com.solapi.sdk.message.model.Message;
 import com.solapi.sdk.message.service.DefaultMessageService;
 import lombok.RequiredArgsConstructor;
@@ -25,12 +26,11 @@ public class SmsService {
 
         try {
             messageService.send(message);
-        } catch (SolapiMessageNotReceivedException exception) {
-            // 발송에 실패한 메시지 목록을 확인할 수 있습니다!
-            System.out.println(exception.getFailedMessageList());
-            System.out.println(exception.getMessage());
+            log.info("[SMS] Send success(to={})", to);
+        } catch (SolapiMessageNotReceivedException | SolapiUnknownException exception) {
+            log.error("[SMS] Send failed by Solapi exception(to={}): error={}", to, exception.toString());
         } catch (Exception exception) {
-            System.out.println(exception.getMessage());
+            log.error("[SMS] Send failed by general exception(to={}): error={}", to, exception.toString());
         }
     }
 }

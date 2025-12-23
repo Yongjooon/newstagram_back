@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
@@ -51,6 +53,10 @@ public class UserController {
             @Valid @RequestBody RegisterRequestDto dto
     ) {
         userService.register(dto);
+
+        // [User] 일반 회원가입 성공 로그 (비밀번호 제외, 이메일/닉네임 기록)
+        log.info("[User] Email Register success: email={} nickname={}", dto.getEmail(), dto.getNickname());
+
         return ResponseEntity.status(HttpStatus.CREATED).body(
                 BaseResponse.successNoData("USER_201", "회원가입 성공")
         );
@@ -75,6 +81,10 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         userService.deleteUserById(userDetails.getUserId());
+
+        // [User] 회원탈퇴 로그 (요청한 사용자 ID 기록)
+        log.info("[User] Delete account: userId={}", userDetails.getUserId());
+
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.successNoData("USER_200", "회원 탈퇴 성공")
         );
@@ -99,6 +109,10 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         UserInfoDto userInfo = userService.getUserInfoByUserId(userDetails.getUserId());
+
+        // [User] 내 정보 조회 로그
+        log.info("[User] Get account info: userId={}", userDetails.getUserId());
+
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.success("USER_200", "회원정보 조회 성공", userInfo)
         );
@@ -128,6 +142,10 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         userService.updateNickname(userDetails.getUserId(), dto);
+
+        // [User] 닉네임 변경 로그 (어떤 유저가 어떤 닉네임으로 바꿨는지)
+        log.info("[User] Update nickname: userId={} newNickname={}", userDetails.getUserId(), dto.getNewNickname());
+
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.successNoData("USER_200", "닉네임 변경 성공")
         );
@@ -157,6 +175,10 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         userService.updatePassword(userDetails.getUserId(), dto);
+
+        // [User] 비밀번호 변경 로그 (보안상 변경 값은 남기지 않고, 수행 사실과 유저 ID만 기록)
+        log.info("[User] Update password: userId={}", userDetails.getUserId());
+
         return ResponseEntity.status(HttpStatus.OK).body(
           BaseResponse.successNoData("USER_200", "비밀번호 변경 성공")
         );

@@ -8,12 +8,14 @@ import com.ssafy.newstagram.api.exception.VerificationException;
 import com.ssafy.newstagram.api.users.repository.UserRepository;
 import com.ssafy.newstagram.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class VerificationCodeServiceImpl implements VerificationCodeService{
@@ -42,6 +44,8 @@ public class VerificationCodeServiceImpl implements VerificationCodeService{
         redisTemplate.opsForHash().put(key, "userId", String.valueOf(userId));
 
         redisTemplate.expire(key, expirationMs, TimeUnit.MILLISECONDS);
+
+        log.info("[Auth] Generate email find code: phoneNumber={} userId={} code={}", phoneNumber, userId, code);
 
         String msg = "[Newstagram] 인증번호: " + code;
         System.out.println(msg);

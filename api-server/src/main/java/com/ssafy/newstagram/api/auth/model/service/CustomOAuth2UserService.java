@@ -6,6 +6,7 @@ import com.ssafy.newstagram.api.auth.model.dto.OAuth2Response;
 import com.ssafy.newstagram.api.users.repository.UserRepository;
 import com.ssafy.newstagram.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
@@ -59,6 +61,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
             userRepository.save(user);
 
+            log.info("[Auth] OAuth2 register success: email={} providerId={}", user.getEmail(), user.getProviderId());
+            
             return new CustomOAuth2User(user);
 
         } // todo : email 회원가입 계정과 중복되는 경우 처리

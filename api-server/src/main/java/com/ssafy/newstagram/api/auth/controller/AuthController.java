@@ -19,6 +19,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -26,6 +27,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -164,6 +166,10 @@ public class AuthController {
             @RequestBody PasswordResetRequestRequestDto dto
     ) {
         authService.requestPasswordReset(dto);
+
+        // [Auth] 비밀번호 재설정 요청 로그 (요청 이메일 기록)
+        log.info("[Auth] Password reset request: email={}", dto.getEmail());
+
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.success(
                         "AUTH_200",
@@ -200,6 +206,10 @@ public class AuthController {
             @RequestBody PasswordResetRequestDto dto
     ) {
         authService.passwordReset(dto);
+
+        // [Auth] 비밀번호 재설정 완료 로그 (단순 성공 기록)
+        log.info("[Auth] Password reset confirm success");
+
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.successNoData(
                         "AUTH_200",
@@ -231,6 +241,9 @@ public class AuthController {
     ) {
         final long expirationMs = 300000;
         verificationCodeService.requestEmailFindVerificationCode(dto, expirationMs);
+
+        // [Auth] 이메일 찾기 인증번호 요청 로그
+        log.info("[Auth] Find email code request: phoneNumber={}", dto.getPhoneNumber());
 
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.success(
@@ -266,6 +279,10 @@ public class AuthController {
             @Valid @RequestBody EmailFindVerifyRequestDto dto
     ) {
         String email = verificationCodeService.verifyAndGetEmail(dto);
+
+        // [Auth] 이메일 찾기 성공 로그 (찾은 이메일 기록)
+        log.info("[Auth] Find email success: phoneNumber={} foundEmail={}", dto.getPhoneNumber(), email);
+
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.success(
                         "AUTH_200",
@@ -301,6 +318,10 @@ public class AuthController {
     ) {
         final long expirationMs = 300000;
         verificationCodeService.requestPhoneVerificationCode(dto, expirationMs);
+
+        // [Auth] 회원가입용 휴대폰 인증 요청 로그
+        log.info("[Auth] Signup phone code request: phoneNumber={}", dto.getPhoneNumber());
+
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.success(
                         "AUTH_200",
@@ -338,6 +359,10 @@ public class AuthController {
             @Valid @RequestBody PhoneVerificationConfirmDto dto
     ) {
         verificationCodeService.confirmPhoneVerification(dto);
+
+        // [Auth] 회원가입용 휴대폰 인증 성공 로그
+        log.info("[Auth] Signup phone verification success: phoneNumber={}", dto.getPhoneNumber());
+
         return ResponseEntity.status(HttpStatus.OK).body(
                 BaseResponse.successNoData(
                         "AUTH_200",
