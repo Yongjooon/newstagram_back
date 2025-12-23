@@ -38,7 +38,7 @@ public class ArticleVectorServiceImpl implements ArticleVectorService {
 
     // 한번에 묶어 보낼 기사 개수
     //private static final int EMBEDDING_BATCH_SIZE = 128;
-    private static final int EMBEDDING_BATCH_SIZE = 50;
+    private static final int EMBEDDING_BATCH_SIZE = 30;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
