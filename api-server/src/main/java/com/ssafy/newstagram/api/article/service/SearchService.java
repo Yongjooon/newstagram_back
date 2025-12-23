@@ -6,7 +6,6 @@ import com.ssafy.newstagram.api.article.dto.EmbeddingResponse;
 import com.ssafy.newstagram.api.article.dto.IntentAnalysisResponse;
 import com.ssafy.newstagram.api.article.dto.SearchHistoryDto;
 import com.ssafy.newstagram.api.article.repository.NewsCategoryRepository;
-import com.ssafy.newstagram.domain.news.entity.NewsCategory;
 import com.ssafy.newstagram.api.article.repository.ArticleRepository;
 import com.ssafy.newstagram.api.users.repository.UserRepository;
 import com.ssafy.newstagram.api.users.repository.UserSearchHistoryRepository;
@@ -361,9 +360,8 @@ public class SearchService {
             return new ArrayList<>();
         }
 
-        String prompt = "Analyze the following search query and identify the top 3 most relevant categories from the list below. " +
+        String prompt = "Analyze the following search query and identify at least the top 3 most relevant categories from the list below. " +
                 "Return ONLY the category codes separated by commas (e.g., POLITICS, ECONOMY, WORLD). " +
-                "If no category matches, return OTHER.\n\n" +
                 "Categories:\n" +
                 "TOP (속보, 최신 기사, 헤드라인, 전체 기사 스트림)\n" +
                 "POLITICS (정치 관련 기사)\n" +
@@ -422,6 +420,7 @@ public class SearchService {
                     
                     String finalCode = cleanCode;
                     newsCategoryRepository.findByName(finalCode).ifPresent(category -> categoryIds.add(category.getId()));
+                    categoryIds.add((long) 1);
                 }
                 return categoryIds;
             }
