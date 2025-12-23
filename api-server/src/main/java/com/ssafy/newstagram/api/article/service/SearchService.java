@@ -83,10 +83,7 @@ public class SearchService {
         log.info("[Search] Original Query: {}, Page: {}", query, page);
 
         // 1. Try Local Analysis (Rule-based)
-        long analysisStartTime = System.currentTimeMillis();
         IntentAnalysisResponse intent = analyzeIntentLocal(query);
-        long analysisEndTime = System.currentTimeMillis();
-        log.info("[Search] Local Analysis took {} ms", (analysisEndTime - analysisStartTime));
 
         if (intent == null) {
             intent = new IntentAnalysisResponse(query, null, 7, new ArrayList<>()); // Default 7 days if analysis fails
@@ -116,7 +113,7 @@ public class SearchService {
         long llmStartTime = System.currentTimeMillis();
         List<Long> categoryIds = analyzeCategoryWithLLM(query);
         long llmEndTime = System.currentTimeMillis();
-        log.info("[Search] LLM Category Analysis took {} ms. Categories: {}", (llmEndTime - llmStartTime), categoryIds);
+        log.info("[Search] LLM Category Analysis took {} ms", (llmEndTime - llmStartTime));
 
         LocalDateTime startDate = null;
         if (intent.getDateRange() > 0) {
@@ -125,8 +122,6 @@ public class SearchService {
 
         // Optimization: Single DB Query with MAX threshold and large limit
         int candidateLimit = 800; 
-        
-        log.info("[Search] Searching candidates with threshold: {}, limit: {}", threshold, candidateLimit);
         
         long dbStartTime = System.currentTimeMillis();
         List<Article> articles = articleRepository.findCandidatesByEmbedding(
@@ -138,7 +133,6 @@ public class SearchService {
                 ? intent.getKeywords()
                 : List.of(query.split("\\s+"));
 
-        long processingStartTime = System.currentTimeMillis();
         List<ArticleDto> result = articles.stream()
                 .filter(article -> {
                     String title = article.getTitle() != null ? article.getTitle() : "";
@@ -153,11 +147,9 @@ public class SearchService {
                 .limit(limit)
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
-        long processingEndTime = System.currentTimeMillis();
-        log.info("[Search] Filtering & Sorting took {} ms", (processingEndTime - processingStartTime));
         
         long totalEndTime = System.currentTimeMillis();
-        log.info("[Search] Total Service Execution took {} ms", (totalEndTime - totalStartTime));
+        log.info("[Search] Total Service Execution took {} ms, query : {}", (totalEndTime - totalStartTime), query);
 
         return result;
     }
@@ -356,6 +348,7 @@ public class SearchService {
     }
 
     private List<Long> analyzeCategoryWithLLM(String query) {
+        log.info("[Prompt Search] query={}", query);
         if (query == null || query.isBlank()) {
             return new ArrayList<>();
         }
@@ -412,8 +405,6 @@ public class SearchService {
                 String[] codes = content.split(",");
                 for (String code : codes) {
                     String cleanCode = code.trim().toUpperCase();
-                    // Remove any non-alphanumeric characters if necessary, but trim should be enough for "POLITICS"
-                    // Handle potential extra text if LLM is chatty (though prompt says ONLY codes)
                     if (cleanCode.contains(" ")) {
                         cleanCode = cleanCode.split("\\s+")[0];
                     }
@@ -447,8 +438,7 @@ public class SearchService {
                 userSearchHistoryRepository.save(history);
             }
         } catch (Exception e) {
-            log.error("Failed to save search history for user: {}", userId, e);
-            // Do not fail the search if history saving fails
+            log.error("[Serach History] Failed to save search history for user={}", userId, e);
         }
     }
 

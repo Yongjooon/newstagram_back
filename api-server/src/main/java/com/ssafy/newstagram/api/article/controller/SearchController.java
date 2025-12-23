@@ -41,12 +41,13 @@ public class SearchController {
         Long userId = userDetails.getUserId();
 
         long startTime = System.currentTimeMillis();
-        log.info("[SearchController] Request received - Query: {}, Limit: {}, Page: {}", query, limit, page);
-
+        
         List<ArticleDto> results = searchService.searchArticles(userId, query, limit, page);
         
         long endTime = System.currentTimeMillis();
-        log.info("[SearchController] Request processed in {} ms", (endTime - startTime));
+
+        log.info("[SearchController] Slow Request Check - Time: {}ms | Query: {}, Limit: {}, Page: {}", 
+        (endTime - startTime), query, limit, page);
 
         return ResponseEntity.ok(results);
     }
