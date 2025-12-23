@@ -22,16 +22,20 @@ public class LoggingAspect {
 
     @Around("apiController()")
     public Object logRequest(ProceedingJoinPoint joinPoint) throws Throwable {
+        String defaultValue = "unknown";
         long start = System.currentTimeMillis();
         String traceId = UUID.randomUUID().toString().substring(0, 8);
 
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         HttpServletRequest request = attributes != null ? attributes.getRequest() : null;
 
-        String method = request != null ? request.getMethod() : "unknown";
-        String uri = request != null ? request.getRequestURI() : "unknown";
-        Long userId = request != null ? GetUserId.getUserIdFromSecurity() : null;
-        String clientIp = request != null ? request.getRemoteAddr() : "unknown";
+        String method = request != null ? request.getMethod() : defaultValue;
+        String uri = request != null ? request.getRequestURI() : defaultValue;
+        Long userId = null;
+        if(!uri.equals("/api/auth/token")) {
+            userId = request != null ? GetUserId.getUserIdFromSecurity() : null;
+        }
+        String clientIp = request != null ? request.getRemoteAddr() : defaultValue;
 
         try {
             Object result = joinPoint.proceed();
