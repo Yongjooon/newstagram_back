@@ -164,7 +164,6 @@ public class ClusteringService {
             LocalDateTime periodStart,
             LocalDateTime periodEnd
     ) {
-        int[] orderedClusterIds = new int[articles.size()];
         // 1) 클러스터 크기 기반 정렬 (내림차순)
         List<Map.Entry<Integer, List<Integer>>> sortedClusters = new ArrayList<>(clusterGroups.entrySet());
         sortedClusters.sort((a, b) -> b.getValue().size() - a.getValue().size());
@@ -180,9 +179,13 @@ public class ClusteringService {
             // ranking: 클러스터 크기 역순, score: 중심 벡터까지의 거리 순
             for (int idx : indices) {
                 double distance = cosineDistance(embeddings[idx], medoid);
+                long articleId = articles.get(idx).getId();
+                String articleTitle = articles.get(idx).getTitle();
+                log.info("[Clustering] periodType={} startDateTime={} clusterId={} articleId={} score={} articleTitle={}",
+                        periodType, periodStart, orderClusterId, articleId, distance, articleTitle);
                 periodRecommendationRepository.save(PeriodRecommendation
                         .builder()
-                                .articleId(articles.get(idx).getId())
+                                .articleId(articleId)
                                 .periodType(periodType)
                                 .ranking(orderClusterId)
                                 .score(distance)
