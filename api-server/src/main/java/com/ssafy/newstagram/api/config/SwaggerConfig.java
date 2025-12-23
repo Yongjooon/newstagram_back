@@ -55,4 +55,13 @@ public class SwaggerConfig {
                 .pathsToMatch(paths)
                 .build();
     }
+
+    @Bean
+    GroupedOpenApi adminOpenApi(){
+        String[] paths = {"/admin/**"};
+        return GroupedOpenApi.builder()
+                .group("admin API")
+                .pathsToMatch(paths)
+                .build();
+    }
 }
